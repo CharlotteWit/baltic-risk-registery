@@ -110,6 +110,30 @@ CREATE TABLE IF NOT EXISTS risk_scores (
     computed_at  TEXT NOT NULL       -- UTC ISO-8601
 );
 CREATE INDEX IF NOT EXISTS idx_riskscores_imo ON risk_scores (imo);
+
+-- Dated identity-change tracking for the fields shadow-fleet vessels alter most:
+-- IMO number, flag, and name. These are FACTS (source-reported), with the dates
+-- coming straight from the source's own statement history (first_seen/last_seen),
+-- NOT from when we happened to fetch them. This is what lets us honestly say
+-- "a new IMO/flag/name was first observed in the last 3 months" with evidence.
+--
+-- One row per (vessel, field, value, originating list). first_seen/last_seen are
+-- the source's observation window for that value; they are a traceable proxy for
+-- when a change occurred, NOT a claim about the exact day the vessel changed.
+CREATE TABLE IF NOT EXISTS identity_history (
+    history_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    imo            TEXT NOT NULL,      -- vessel key (the primary IMO we keyed on)
+    field          TEXT NOT NULL,      -- imo_number | flag | name
+    value          TEXT NOT NULL,
+    source_id      TEXT NOT NULL REFERENCES sources(source_id),
+    origin_dataset TEXT,               -- underlying list, e.g. eu_journal_sanctions
+    source_url     TEXT NOT NULL,      -- spot-checkable entity page
+    first_seen     TEXT,               -- SOURCE-provided UTC ISO: first observed
+    last_seen      TEXT,               -- SOURCE-provided UTC ISO: last observed
+    retrieved_at   TEXT NOT NULL,      -- when WE fetched it (UTC ISO)
+    UNIQUE (imo, field, value, source_id, origin_dataset)
+);
+CREATE INDEX IF NOT EXISTS idx_idhist_imo_field ON identity_history (imo, field);
 """
 
 

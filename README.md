@@ -8,21 +8,33 @@ design and the non-negotiable provenance rules.
 
 ## What's built so far
 
-**M1 (in progress) — project foundation**
+**M1 — sanctions/vessel ingestion with provenance (working)**
 - `src/db.py` — the SQLite schema (sources, facts, positions, list_membership,
-  port_calls, risk_flags, risk_scores). The `facts` table is append-only so a
-  vessel's identity history (renames, reflagging) is preserved.
+  port_calls, risk_flags, risk_scores, identity_history). The `facts` table is
+  append-only so a vessel's identity history is preserved.
 - `src/provenance.py` — the **provenance gate**: the only sanctioned way to write a
   fact. It refuses any value lacking a source_id, source_url, and a valid UTC
   timestamp. "Unknown" is recorded with a real source, never guessed.
+- `src/connectors/opensanctions.py` — pulls the ~1,900 sanctioned VESSEL entities
+  from the live OpenSanctions API and stores every value as a sourced fact. The
+  `source_url` is the public OpenSanctions entity page (spot-checkable in a
+  browser). Vessels with no usable IMO are skipped (not guessed); vessels with
+  multiple/odd IMO numbers are flagged ("zombie IMO" anomaly).
+- `src/connectors/opensanctions_history.py` — populates `identity_history` with
+  DATED observations of each vessel's IMO/flag/name from the OpenSanctions
+  `/statements` API. The dates (`first_seen`/`last_seen`) are the source's own.
+- `src/identity.py` — change detection for IMO/flag/name. Treats case/spacing-only
+  differences as the same value, so only **genuine** renames/reflaggings count as
+  changes; raw values are always preserved verbatim.
 - `rules.yaml` — the transparent risk rules (R1–R10) and score bands.
 - `config/geofences.yaml` — region bounding boxes and Russian oil terminals.
-- `tests/test_provenance.py` — proves sourceless data is refused.
+- `tests/` — `test_provenance.py` (sourceless data is refused) and
+  `test_identity.py` (casing variants are not false changes; real renames are caught).
+- `scripts/show_vessel.py` — prints a vessel's facts + dated identity-change
+  tracking, each value with its source URL and retrieval time.
 
-_Still to come in M1: the OpenSanctions and EU consolidated-list connectors that
-populate the facts table. These will be added once Python is installed so their
-output can be verified against the live sources (per the project's rule that every
-result must be spot-checkable)._
+_Still to come: the official EU consolidated-list connector (EU vessel sanctions
+are already captured via OpenSanctions in the meantime, cited to the EU datasets)._
 
 ## Setup
 
@@ -43,10 +55,26 @@ Create the database and list its tables:
 py src/db.py
 ```
 
-Run the provenance tests:
+Ingest sanctioned vessels (needs OPENSANCTIONS_API_KEY in `.env`):
+```
+py src/connectors/opensanctions.py            # vessel facts (~30s)
+py src/connectors/opensanctions_history.py    # dated IMO/flag/name history (~6-8 min)
+```
+
+Show a vessel's evidence with sources and identity-change tracking:
+```
+py scripts/show_vessel.py 9288851
+```
+
+Run the tests:
 ```
 py tests/test_provenance.py
+py tests/test_identity.py
 ```
+
+_Note: on Windows, prefix with `$env:PYTHONIOENCODING="utf-8"` if non-English
+characters (e.g. French vessel-type text) show as `?` in the console — the stored
+data is UTF-8 regardless; it's only a console display issue._
 
 ## Data sources
 
