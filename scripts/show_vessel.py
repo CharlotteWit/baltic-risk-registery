@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import db
-from identity import group_identity_history, recent_changes
+from identity import group_identity_history, recent_changes, current_value, display_name
 
 RECENT_DAYS = 90  # "last 3 months"
 
@@ -46,6 +46,24 @@ def show(conn, imo, cutoff_iso):
     if lists:
         print("On lists:", ", ".join(l["list_name"] for l in lists))
     print('='*80)
+
+    # --- DERIVED current identity (inference, not a fact) ---
+    # Rule: the operative name/flag is the value with the most recent first_seen
+    # ("latest known"). Shown separately from facts because it is COMPUTED.
+    print("\n--- CURRENT IDENTITY  [DERIVED — inference, latest known] ---")
+    for field, label in (("name", "name"), ("flag", "flag")):
+        rows = conn.execute(
+            "SELECT value, origin_dataset, first_seen, last_seen FROM identity_history "
+            "WHERE imo=? AND field=? ORDER BY first_seen", (imo, field)).fetchall()
+        groups = group_identity_history(rows, field)
+        cur = current_value(groups)
+        if not cur:
+            print(f"  current {label}: (no dated history)")
+            continue
+        disp = display_name(cur) if field == "name" else " / ".join(cur["variants"])
+        print(f"  current {label}: {disp}")
+        print(f"      basis: latest first_seen {cur['first_seen']} "
+              f"via {', '.join(cur['datasets']) or 'n/a'}  (proxy; AIS in M3 is ground truth)")
 
     print("\n--- FACTS (source-reported) ---")
     for field in sorted(by_field):

@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from identity import normalize_identity_value, group_identity_history, recent_changes
+from identity import (normalize_identity_value, group_identity_history,
+                      recent_changes, current_value, display_name)
 
 CUTOFF = "2026-03-18T00:00:00+00:00"
 
@@ -52,9 +53,32 @@ def test_single_value_is_never_a_change():
     print("PASS: a single IMO value is not reported as a change")
 
 
+def test_current_value_is_latest_known():
+    # Ship 2 shape: SOKOLO appeared after Oman Pride / Lydya N -> SOKOLO is current.
+    rows = [
+        {"value": "OMAN PRIDE", "origin_dataset": "ofac", "first_seen": "2025-03-13T00:00:00", "last_seen": "2026-06-16T00:00:00"},
+        {"value": "LYDYA N", "origin_dataset": "csl", "first_seen": "2025-03-13T00:00:00", "last_seen": "2026-06-16T00:00:00"},
+        {"value": "SOKOLO", "origin_dataset": "ua", "first_seen": "2026-06-09T00:00:00", "last_seen": "2026-06-16T00:00:00"},
+    ]
+    groups = group_identity_history(rows, "name")
+    cur = current_value(groups)
+    assert cur["variants"] == ["SOKOLO"], cur
+    print("PASS: current name = latest known (SOKOLO), not the OpenSanctions caption")
+
+
+def test_display_name_prefers_mixed_case():
+    rows = [{"value": "OMAN PRIDE", "origin_dataset": "a", "first_seen": "2025-01-01T00:00:00"},
+            {"value": "Oman Pride", "origin_dataset": "b", "first_seen": "2025-01-01T00:00:00"}]
+    g = group_identity_history(rows, "name")[0]
+    assert display_name(g) == "Oman Pride", display_name(g)
+    print("PASS: display_name prefers the readable mixed-case variant")
+
+
 if __name__ == "__main__":
     test_normalize_ignores_case_and_spacing()
     test_casing_variant_is_not_a_change()
     test_genuine_rename_is_a_change()
     test_single_value_is_never_a_change()
+    test_current_value_is_latest_known()
+    test_display_name_prefers_mixed_case()
     print("\nAll identity tests passed.")

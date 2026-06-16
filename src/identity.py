@@ -33,32 +33,71 @@ def normalize_identity_value(field, value):
     return v.strip()
 
 
+def _get(row, key):
+    """Read a key from either a sqlite3.Row or a plain dict; None if absent."""
+    try:
+        return row[key]
+    except (KeyError, IndexError):
+        return None
+
+
 def group_identity_history(rows, field):
     """Collapse identity_history rows for one field into distinct values.
 
     `rows` is any iterable of mappings with 'value', 'origin_dataset',
-    'first_seen'. Returns a list of groups sorted by earliest first_seen:
-        {key, variants: [raw...], first_seen, datasets: [...]}
+    'first_seen' and (optionally) 'last_seen'. Returns a list of groups sorted by
+    earliest first_seen:
+        {key, variants: [raw...], first_seen, last_seen, datasets: [...]}
     Values that differ only by case/spacing land in the same group.
     """
     groups = {}
     for r in rows:
         key = normalize_identity_value(field, r["value"])
         g = groups.setdefault(key, {"key": key, "variants": set(),
-                                    "firsts": [], "datasets": set()})
+                                    "firsts": [], "lasts": [], "datasets": set()})
         g["variants"].add(r["value"])
-        if r["first_seen"]:
+        if _get(r, "first_seen"):
             g["firsts"].append(r["first_seen"])
-        if r["origin_dataset"]:
+        if _get(r, "last_seen"):
+            g["lasts"].append(r["last_seen"])
+        if _get(r, "origin_dataset"):
             g["datasets"].add(r["origin_dataset"])
     out = [{
         "key": g["key"],
         "variants": sorted(g["variants"]),
         "first_seen": min(g["firsts"]) if g["firsts"] else None,
+        "last_seen": max(g["lasts"]) if g["lasts"] else None,
         "datasets": sorted(g["datasets"]),
     } for g in groups.values()]
     out.sort(key=lambda x: x["first_seen"] or "")
     return out
+
+
+def current_value(groups):
+    """The 'latest known' value for a field — our rule for the operative
+    name/flag (the one most likely current on the water).
+
+    This is an INFERENCE, not a fact: we pick the value with the most recent
+    `first_seen` (when it first appeared in any list — a proxy for when the
+    vessel adopted it). Ties break toward the value corroborated by more lists,
+    then deterministically by name. The real-time ground truth is AIS (M3).
+
+    Returns the chosen group dict (with .variants/.first_seen/.datasets), or None.
+    """
+    if not groups:
+        return None
+    return max(groups, key=lambda g: (g["first_seen"] or "",
+                                      len(g["datasets"]),
+                                      g["variants"][0] if g["variants"] else ""))
+
+
+def display_name(group):
+    """A single readable label for a chosen group (prefers a mixed-case variant
+    over an ALL-CAPS one when both exist, since the data carries both)."""
+    if not group or not group["variants"]:
+        return None
+    mixed = [v for v in group["variants"] if v != v.upper()]
+    return (mixed or group["variants"])[0]
 
 
 def recent_changes(groups, cutoff_iso):

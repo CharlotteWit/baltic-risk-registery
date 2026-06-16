@@ -36,6 +36,15 @@ design and the non-negotiable provenance rules.
 _Still to come: the official EU consolidated-list connector (EU vessel sanctions
 are already captured via OpenSanctions in the meantime, cited to the EU datasets)._
 
+### Which name/flag is "current"? (the naming rule)
+A vessel often carries many names across the lists. We store **all** of them as
+facts. The single operative name/flag shown to a user is **the latest known** —
+the value with the most recent `first_seen` (when it first appeared in any list).
+This usually reflects what the vessel is actually using now, because shadow-fleet
+vessels rename to shed a flagged identity. It is treated as a **DERIVED inference**
+(shown separately from facts), because `first_seen` is a proxy for the real rename
+date. The real-time ground truth is the name broadcast over **AIS** (arrives in M3).
+
 ## Setup
 
 1. **Install Python 3** (3.10+). On Windows, download from https://www.python.org/downloads/.
