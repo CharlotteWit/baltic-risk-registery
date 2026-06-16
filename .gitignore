@@ -1,0 +1,27 @@
+# Secrets — NEVER commit these
+.env
+
+# Local database (rebuildable from sources; not committed)
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.duckdb
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Generated outputs
+exports/
+*.html
+!templates/*.html
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

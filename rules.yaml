@@ -1,0 +1,90 @@
+# rules.yaml — the transparent risk-scoring rules.
+#
+# This file is the WHOLE scoring logic. There is no hidden scoring anywhere else.
+# Anyone can read and edit these weights; the engine (built in M5) reads this file
+# and records, for every vessel, exactly which rules fired and the evidence behind
+# each. Change a weight here, re-run, and the scores change accordingly.
+#
+# Weights below are a STARTING POINT from the project brief — illustrative, to be
+# calibrated. The framing is environmental: an old, uninsured tanker scores high
+# whether or not it is sanctioned.
+
+rules:
+  - id: R1
+    description: "Vessel age over 20 years"
+    weight: 3
+    data_source: "built_year fact (e.g. Equasis / registry)"
+
+  - id: R1b
+    description: "Vessel age 15-20 years"
+    weight: 2
+    data_source: "built_year fact"
+
+  - id: R2
+    description: "No recognised International Group P&I insurer / unknown insurer"
+    weight: 3
+    data_source: "insurer fact"
+
+  - id: R3
+    description: "Flag changed within the last 12 months"
+    weight: 2
+    data_source: "history of flag facts (append-only facts table)"
+
+  - id: R4
+    description: "Name changed within the last 12 months"
+    weight: 1
+    data_source: "history of name facts"
+
+  - id: R5
+    description: "Flag is a high flag-of-convenience-risk flag"
+    weight: 1
+    data_source: "current flag fact + foc_flags list below"
+
+  - id: R6
+    description: "Paris MoU (or other PSC) detention in the last 24 months"
+    weight: 2
+    data_source: "Port State Control detention records (via OpenSanctions)"
+
+  - id: R7
+    description: "AIS gap over N hours while inside a monitored zone"
+    weight: 2
+    data_source: "positions table (gap analysis)"
+    params:
+      gap_hours: 6
+
+  - id: R8
+    description: "Recent call at a Russian oil terminal (Primorsk, Ust-Luga, Novorossiysk, Kozmino)"
+    weight: 2
+    data_source: "port_calls inference"
+
+  - id: R9
+    description: "Loitering pattern consistent with ship-to-ship transfer"
+    weight: 2
+    data_source: "positions table (loitering analysis)"
+
+  - id: R10
+    description: "Listed by EU / OFAC / UK / KSE / GUR"
+    weight: 3
+    data_source: "list_membership table"
+
+# Score bands (illustrative). Every score must still be expandable into the list
+# of rules that fired and the evidence behind each.
+bands:
+  - {name: low,      min: 0, max: 3}
+  - {name: elevated, min: 4, max: 7}
+  - {name: high,     min: 8, max: 9999}
+
+# Flags commonly associated with elevated flag-of-convenience risk (used by R5).
+# This list is editable; document why a flag is here when you add one.
+foc_flags:
+  - Panama
+  - Liberia
+  - Marshall Islands
+  - Cook Islands
+  - Comoros
+  - Gabon
+  - Palau
+  - "Sao Tome and Principe"
+  - Cameroon
+  - Barbados
+  - Djibouti
