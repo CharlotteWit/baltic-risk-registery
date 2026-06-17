@@ -61,7 +61,9 @@ CREATE TABLE IF NOT EXISTS positions (
     nav_status   TEXT,
     timestamp    TEXT NOT NULL,      -- UTC ISO-8601 of the ping
     source_id    TEXT NOT NULL REFERENCES sources(source_id),
-    confidence   TEXT                -- e.g. 'normal' | 'low' (impossible jump / suspected spoof)
+    confidence   TEXT,               -- e.g. 'normal' | 'low' (impossible jump / suspected spoof)
+    ais_ship_type INTEGER,           -- raw AIS ship-type code (ITU-R M.1371), if known
+    type_category TEXT               -- our category: tanker/cargo/unknown/other/... (see ais_types.py)
 );
 CREATE INDEX IF NOT EXISTS idx_positions_imo_ts ON positions (imo, timestamp);
 CREATE INDEX IF NOT EXISTS idx_positions_mmsi_ts ON positions (mmsi, timestamp);
@@ -147,11 +149,20 @@ def connect(db_path=DEFAULT_DB_PATH):
     return conn
 
 
+def _migrate(conn):
+    """Add columns introduced after a database was first created. Idempotent."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(positions)")}
+    for name, decl in (("ais_ship_type", "INTEGER"), ("type_category", "TEXT")):
+        if name not in cols:
+            conn.execute(f"ALTER TABLE positions ADD COLUMN {name} {decl}")
+
+
 def init_db(db_path=DEFAULT_DB_PATH):
-    """Create all tables if they do not exist. Safe to run repeatedly."""
+    """Create all tables if they do not exist (and migrate). Safe to run repeatedly."""
     conn = connect(db_path)
     with conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
     return conn
 
 

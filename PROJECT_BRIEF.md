@@ -129,6 +129,13 @@ each rule's data (e.g. R6 from Paris MoU records, R1 from Equasis build year).
   non-commercial.
 - **Official EU consolidated sanctions list**: primary sanctions, machine-readable.
 - **KSE shadow-fleet list**: the de facto reference set (cite as analytical source).
+  NOTE: `sanctions.kse.ua` has a browsable "Sanctions Database," but it covers
+  country/company-level sanctions measures (laws, decrees), not vessels — do not
+  have Claude Code look for a vessel API there. The vessel data ("Russian Shadow
+  Fleet Tracker") exists only as monthly PDF reports linked from that site. Reach
+  it via OpenSanctions (preferred) or by extracting tables directly from the PDFs
+  (e.g. `https://kse.ua/wp-content/uploads/2024/06/Global-Shadow-Fleet-June-2024.pdf`
+  and the monthly reports tagged "ShadowFleetTracker" on sanctions.kse.ua/en/news/).
 - **Ukrainian GUR catalogue**: public shadow-fleet/sanctioned vessels.
 - **aisstream.io**: free live AIS via websocket. The position source.
 - **Equasis**: ship particulars (age, flag, class, history) — manual/respectful use.
@@ -176,15 +183,37 @@ timestamp." Spot-check one IMO against the live OpenSanctions website.
 **Check:** Pick one vessel on KSE but not on the EU list (or vice versa) and confirm
 the report flags the disagreement.
 
-### M3 — Live AIS feed
+### M3 — Live AIS feed (filtered by ship type)
 > Connect to the aisstream.io websocket using my key from .env. Subscribe to the
-> Baltic, Danish Straits and North Sea bounding boxes in the brief, plus our watch-list
-> of IMO/MMSI numbers. Store incoming positions in the `positions` table with
-> timestamps and source_id. Run it for a few minutes and show me the last-known
-> position for 5 vessels.
+> Baltic, Danish Straits and North Sea bounding boxes in the brief, plus our
+> watch-list of IMO/MMSI numbers (so a watch-listed vessel is still tracked even if
+> briefly outside the boxes). Filter by AIS ship-type code so we only store vessels
+> in these categories:
+>
+> INCLUDE: crude oil tankers, oil products tankers, chemical tankers, LNG/LPG
+> carriers, bulk carriers, general cargo ships.
+>
+> EXCLUDE: ferries, passenger/cruise ships, sailing/pleasure craft, fishing
+> vessels, tugs, military/SAR/law-enforcement vessels.
+>
+> INCLUDE vessels whose AIS ship-type code is missing or "not available" — do not
+> exclude them at this stage. Tag them clearly (e.g. a `type_category = unknown`
+> field) so they're visibly distinct from the named categories above. We'll decide
+> later, once we can see their size/tonnage data, whether to exclude the small ones;
+> an unknown type may itself be a minor signal worth keeping rather than noise to
+> discard now.
+>
+> Store incoming positions in the `positions` table with timestamps and source_id.
+> Tell me which AIS ship-type codes map to each category above, since this mapping
+> is itself worth showing me before you rely on it. Run it for a few minutes and
+> show me the last-known position for 5 vessels, including their ship-type code
+> and which category it matched.
 
-**Check:** Are positions arriving with real timestamps? Does one match what a public
-tracker shows for the same ship right now (rough sanity check only)?
+**Check:** Are positions arriving with real timestamps? Does the type mapping
+Claude Code shows you look right (spot-check 2-3 codes against the public AIS
+ship-type standard)? Does one position match what a public tracker shows for the
+same ship right now (rough sanity check only)? Are unknown-type vessels showing up
+in the data tagged as `unknown` rather than excluded?
 
 ### M4 — Port calls & Russian terminals
 > From the position history, infer port calls (a vessel inside a port zone at low
@@ -200,9 +229,17 @@ tracker shows for the same ship right now (rough sanity check only)?
 > table in the brief. Compute a score and band per vessel, storing each fired rule in
 > `risk_flags` with its evidence. Show me one vessel's score fully broken down into
 > the rules that fired and the source behind each.
+>
+> Also show me the distribution of vessel length/tonnage across everything we've
+> ingested so far, broken out by category — including the `unknown` type vessels
+> as their own group. I want to decide, looking at real numbers, whether to add a
+> minimum size threshold as an additional rule — e.g. excluding small general
+> cargo ships or small unknown-type vessels that pose little spill risk even if
+> old — rather than guessing a cutoff in advance.
 
 **Check:** Does every point in the score trace to a rule and a sourced fact? Change a
-weight in `rules.yaml`, re-run, and confirm the score changes accordingly.
+weight in `rules.yaml`, re-run, and confirm the score changes accordingly. Does the
+size distribution give you enough to set a sensible threshold, if you want one?
 
 ### M6 — Map & evidence sheets
 > Build a local map (folium/Leaflet) of the region, with vessels coloured by risk

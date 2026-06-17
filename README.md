@@ -62,6 +62,34 @@ vessels rename to shed a flagged identity. It is treated as a **DERIVED inferenc
 (shown separately from facts), because `first_seen` is a proxy for the real rename
 date. The real-time ground truth is the name broadcast over **AIS** (arrives in M3).
 
+## Why these vessels are included (AIS ship-type selection)
+
+This project tracks vessels that could pose an **environmental threat to the
+Baltic and North Sea**. The live AIS feed (M3) therefore keeps:
+
+- **All tankers** (AIS codes 80–89). We deliberately keep *every* tanker, not just
+  crude-oil carriers — products, chemical and gas (LNG/LPG) cargoes can all be an
+  environmental hazard if a vessel is old, poorly maintained or uninsured.
+- **All cargo ships** (70–79), including bulk and general cargo.
+- **Unknown / "other" / reserved types** (code 0, missing, and the miscellaneous
+  ranges). We keep these for now rather than discarding them; a vessel can be
+  triaged out later based on its size or registry data. Keeping them avoids
+  throwing away something that might matter.
+- **High-speed craft** (40–49), for the same "decide later by size/age" reason.
+- **Military, noncombatant, law-enforcement and search-and-rescue vessels**
+  (35, 51, 55, 59). We keep these not as risk subjects themselves but because they
+  **may interact with vessels in trouble at sea** — responding to a breakdown,
+  spill, collision or other incident. Their presence near a monitored vessel can
+  be a useful contextual signal, which we may analyse later (see `TODO.md`).
+
+It **drops** vessel types that are not relevant to this environmental-risk scope:
+passenger ships/ferries, sailing and pleasure craft, fishing vessels, tugs/towing,
+and port-service craft (pilots, tenders, dredgers, etc.).
+
+The selection is by behaviour and vessel category only. It is **not** an
+assertion that any vessel or operator is doing anything wrongful — it simply
+decides what to watch for potential environmental risk.
+
 ## Setup
 
 1. **Install Python 3** (3.10+). On Windows, download from https://www.python.org/downloads/.

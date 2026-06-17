@@ -11,9 +11,9 @@ M-series milestones are complete.)
       before coding; fall back to OpenSanctions if access is fiddly.
 - [ ] **Equasis** — ship particulars (age, class, history). Manual/respectful
       use only; set aside for now, may add later.
-- [ ] **Direct KSE PDF / GUR crawl** — if/when OpenSanctions coverage proves
-      insufficient, add the original KSE report parse and the polite GUR
-      catalogue crawl (war-sanctions.gur.gov.ua) as primary sources.
+- [ ] **Direct GUR crawl (fallback only)** — if OpenSanctions' GUR coverage
+      proves insufficient, add a polite crawl of war-sanctions.gur.gov.ua.
+      (KSE is deliberately excluded from this project — no accessible dataset.)
 
 ## Data-quality enhancements
 - [ ] **GISIS IMO verification** — check IMO numbers against the IMO authority's
@@ -22,6 +22,13 @@ M-series milestones are complete.)
 - [ ] **Apply "latest known name" as the default label everywhere** a single
       vessel name is needed (listings, exports, map labels), reusing
       `identity.current_value`.
+
+## Analysis (later)
+- [ ] **Military / law-enforcement / SAR proximity analysis** — these vessel
+      types are kept in the feed. Later, analyse their proximity to or
+      interaction with monitored vessels (e.g. responding to a vessel in trouble,
+      an incident, or an at-sea transfer) as a contextual signal — without
+      asserting intent.
 
 ## Notes
 - AIS (M3), port calls (M4), risk engine (M5), map (M6), export (M7) are the
