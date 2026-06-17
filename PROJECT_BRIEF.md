@@ -115,13 +115,25 @@ sanctioned.
 | R5 | Flag is a high flag-of-convenience-risk flag | +1 |
 | R6 | Paris MoU (or other PSC) detention in last 24 months | +2 |
 | R7 | AIS gap over N hours while inside a monitored zone | +2 |
-| R8 | Recent call at a Russian oil terminal (Primorsk, Ust-Luga, Novorossiysk, Kozmino) | +2 |
+| R8a | Recent call at a **major** Russian Baltic oil terminal (Primorsk, Ust-Luga) | +2 |
+| R8b | Recent call at a **secondary** Russian Baltic oil/products terminal (Vysotsk, St. Petersburg/Great Port, Vyborg, Kaliningrad) | +1 |
+| R8c | Recent call at a non-Baltic Russian oil terminal, known only via an external sourced fact, not our own AIS (Novorossiysk, Kozmino, Murmansk) | +2 |
 | R9 | Loitering pattern consistent with ship-to-ship transfer | +2 |
 | R10 | Listed by EU / OFAC / UK / KSE / GUR | +3 |
 
 Bands (illustrative): 0–3 low, 4–7 elevated, 8+ high. Every score must be expandable
 into the list of rules that fired and the evidence behind each. Document the source of
 each rule's data (e.g. R6 from Paris MoU records, R1 from Equasis build year).
+
+**R8 terminal reference (sourced June 2026):** Primorsk and Ust-Luga are Russia's two
+largest Baltic oil/fuel export ports, together the dominant share of Baltic crude
+exports — these get the full R8a weight. Four smaller Baltic terminals — Vysotsk
+(pipeline-linked to Primorsk, plus a separate LNG terminal), St. Petersburg/Great
+Port, Vyborg, and Kaliningrad (an exclave, not connected to the mainland pipeline) —
+handle real but much smaller petroleum volumes and get the lighter R8b weight.
+Novorossiysk (Black Sea), Kozmino (Pacific) and Murmansk (Arctic) are outside our
+AIS coverage entirely (see M4) and can only ever be sourced from an external dataset,
+not our own positions — kept as a separate R8c rule for that reason.
 
 ### 2.5 Data sources (and how to treat them)
 - **OpenSanctions** (API + bulk CSV/JSON): sanctions, IMO numbers, "shadow fleet" tag,
@@ -208,17 +220,32 @@ timestamp." Spot-check one IMO against the live OpenSanctions website.
 **Check:** Pick one vessel on KSE but not on the EU list (or vice versa) and confirm
 the report flags the disagreement.
 
-### M1b — Wikidata connector (added mid-session, after M2, run retroactively)
-> Add a new fact source: Wikidata. For every IMO already in our database, query the
-> Wikidata SPARQL endpoint on the "IMO ship number" property for build year, ship
-> type, owner, tonnage, and former names. Write matches to `facts` with
-> `source_id="wikidata"`, the specific item URL, and a timestamp; register "wikidata"
-> in `sources` flagged as tertiary/lower-confidence; never overwrite an existing
-> primary-source value, store alongside it instead. No match → leave `unknown`.
-> Run once against existing data, then fold into the regular refresh.
+### M1b — Wikidata connector, AIS-triggered, with early age-risk flag
+> (Added mid-session after M2; upgraded again during M3 once AIS was live. Originally
+> a one-time backfill against sanctions-list IMOs only — superseded by the version
+> below, which runs continuously against every AIS-observed vessel instead.)
+>
+> Add Wikidata as a fact source. Whenever a vessel appears in `positions` (has
+> entered a monitored region) and matches the M3 ship-type filter (named categories
+> or unknown-type), check for an existing `built_year` fact for its IMO from any
+> source. If none exists, query the Wikidata SPARQL endpoint on the "IMO ship
+> number" property for build year, ship type, owner, tonnage, and former names.
+> Write any matches to `facts` with `source_id="wikidata"`, the specific item URL,
+> and a timestamp; register "wikidata" in `sources` flagged as tertiary/
+> lower-confidence. Never overwrite an existing primary-source value for the same
+> field — store the Wikidata value alongside it. No match → leave `unknown`.
+>
+> Once a `built_year` is known for a vessel (from any source), compute its age and,
+> if over 20 years, write a `risk_flags` row: `rule_id="R1"`, `triggered=true`,
+> `weight=3`, `evidence` pointing to the `built_year` fact. This is an early,
+> working preview of one rule from the full M5 scoring engine, applied continuously
+> as new vessels are observed — not a one-off batch job.
 
 **Check:** Low match-rate is expected and correct, not a bug. Confirm Wikidata
-values never replaced an existing OpenSanctions/EU value for the same field.
+values never replaced an existing OpenSanctions/EU value for the same field. Ask for
+a count of AIS-observed vessels with a known build year (by source: sanctions-list
+vs. Wikidata), how many are flagged over 20 years, and one full evidence trail for a
+flagged vessel (AIS sighting → Wikidata fact + item URL → resulting risk flag).
 
 ### M3 — Live AIS feed (filtered by ship type)
 > Connect to the aisstream.io websocket using my key from .env. Subscribe to the
@@ -252,14 +279,28 @@ ship-type standard)? Does one position match what a public tracker shows for the
 same ship right now (rough sanity check only)? Are unknown-type vessels showing up
 in the data tagged as `unknown` rather than excluded?
 
-### M4 — Port calls & Russian terminals
+### M4 — Port calls & Russian Baltic terminals
 > From the position history, infer port calls (a vessel inside a port zone at low
-> speed for a sustained period). Flag calls at Russian oil terminals (Primorsk,
-> Ust-Luga, Novorossiysk, Kozmino). Store these in `port_calls` as inferences with a
-> method note and references to the positions used. Show me recent Russian-terminal
-> calls with their evidence.
+> speed for a sustained period). Build port-zone polygons for six Russian Baltic
+> terminals and tag each call by tier:
+>
+> **Major (R8a):** Primorsk, Ust-Luga.
+> **Secondary (R8b):** Vysotsk, St. Petersburg (Great Port), Vyborg, Kaliningrad.
+>
+> Store these in `port_calls` as inferences with a method note, the tier, and
+> references to the positions used. Show me recent calls at each tier with their
+> evidence.
+>
+> Separately: Novorossiysk, Kozmino and Murmansk are outside our AIS bounding boxes
+> entirely — we will never have positions for them. Do not try to detect these from
+> our own AIS data. Instead, for R8c, check whether any vessel in our database has
+> an existing `facts` row from OpenSanctions/KSE/GUR that already states a call at
+> one of these ports, and surface that as a separate, clearly externally-sourced
+> flag — never inferred from our own positions.
 
-**Check:** For one flagged call, can it show the positions that triggered it?
+**Check:** For one flagged call at each tier, can it show the positions that
+triggered it and confirm the correct tier was assigned? For R8c, confirm the flag is
+visibly marked as coming from an external fact, not our own AIS inference.
 
 ### M5 — The transparent risk engine
 > Implement the risk-scoring engine. Read the weights from `rules.yaml` matching the

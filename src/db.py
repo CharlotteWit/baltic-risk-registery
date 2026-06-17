@@ -86,9 +86,10 @@ CREATE TABLE IF NOT EXISTS port_calls (
     imo          TEXT NOT NULL,
     port         TEXT,
     country      TEXT,
+    tier         TEXT,               -- R8a (major) / R8b (secondary) / R8c (external)
     arrival      TEXT,               -- UTC ISO-8601
     departure    TEXT,               -- UTC ISO-8601
-    method_note  TEXT NOT NULL,      -- how this was inferred
+    method_note  TEXT NOT NULL,      -- how this was inferred (or 'external-fact')
     evidence     TEXT NOT NULL       -- refs to position_id rows used (e.g. JSON list)
 );
 
@@ -159,6 +160,9 @@ def _migrate(conn):
     scols = {r["name"] for r in conn.execute("PRAGMA table_info(sources)")}
     if "note" not in scols:
         conn.execute("ALTER TABLE sources ADD COLUMN note TEXT")
+    pcols = {r["name"] for r in conn.execute("PRAGMA table_info(port_calls)")}
+    if "tier" not in pcols:
+        conn.execute("ALTER TABLE port_calls ADD COLUMN tier TEXT")
 
 
 def init_db(db_path=DEFAULT_DB_PATH):

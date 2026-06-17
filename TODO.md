@@ -23,6 +23,12 @@ M-series milestones are complete.)
       vessel name is needed (listings, exports, map labels), reusing
       `identity.current_value`.
 
+## Data sources to add (continued)
+- [ ] **Port-call facts for R8c** — we currently store no "called at port X"
+      facts, so the R8c external-fact check (Novorossiysk / Kozmino / Murmansk)
+      has nothing to surface. The GUR per-vessel pages list port calls; ingesting
+      those as structured `port_call`/`last_port` facts would populate R8c.
+
 ## Analysis (later)
 - [ ] **Military / law-enforcement / SAR proximity analysis** — these vessel
       types are kept in the feed. Later, analyse their proximity to or

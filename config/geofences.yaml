@@ -1,15 +1,20 @@
 # geofences.yaml — geographic scope and watched terminals.
 #
-# Bounding boxes are approximate (from PROJECT_BRIEF 2.2) and can be refined.
-# aisstream.io (used in M3) accepts bounding boxes as [[lat_min, lon_min],
-# [lat_max, lon_max]] pairs; we keep them here in a readable form.
+# Bounding boxes are approximate (from PROJECT_BRIEF 2.2). aisstream.io accepts
+# bounding boxes as [[lat_min, lon_min], [lat_max, lon_max]] pairs.
+#
+# NOTE on baltic_sea lon_max (2026-06-17): we first extended it to 30.5 to cover
+# St. Petersburg (~30.17 E), then discovered the free aisstream network delivers
+# NO positions east of ~26.85 E — the Russian Gulf-of-Finland terminals get no
+# AIS data at all. So we trimmed lon_max back to 27.0: there is no point
+# subscribing to a dead zone. See README "Russian-terminal coverage limitation".
 
 bounding_boxes:
   baltic_sea:
     lat_min: 53.5
     lat_max: 66.0
     lon_min: 9.0
-    lon_max: 30.0
+    lon_max: 27.0
   danish_straits:
     lat_min: 54.5
     lat_max: 58.0
@@ -21,10 +26,21 @@ bounding_boxes:
     lon_min: -4.0
     lon_max: 9.0
 
-# Russian oil terminals to flag for R8. Coordinates are approximate centres;
-# the port-call inference (M4) uses a radius around each. Verify/refine later.
-russian_oil_terminals:
-  - {name: Primorsk,     country: Russia, lat: 60.34, lon: 28.61, radius_km: 12}
-  - {name: Ust-Luga,     country: Russia, lat: 59.66, lon: 28.27, radius_km: 12}
-  - {name: Novorossiysk, country: Russia, lat: 44.72, lon: 37.78, radius_km: 12}
-  - {name: Kozmino,      country: Russia, lat: 42.73, lon: 133.06, radius_km: 12}
+# Russian BALTIC terminals — port-call zones for AIS inference (M4).
+# Centres supplied by the user from visual map inspection (oil silos/berths).
+# tier: R8a = major, R8b = secondary. radius_km defines a circular zone.
+russian_baltic_terminals:
+  - {name: Primorsk,                tier: R8a, country: Russia, lat: 60.334642, lon: 28.716569, radius_km: 5}
+  - {name: Ust-Luga,                tier: R8a, country: Russia, lat: 59.699194, lon: 28.426194, radius_km: 5}
+  - {name: Vysotsk,                 tier: R8b, country: Russia, lat: 60.596571, lon: 28.568504, radius_km: 5}
+  - {name: Vyborg,                  tier: R8b, country: Russia, lat: 60.706126, lon: 28.735975, radius_km: 5}
+  - {name: "St. Petersburg (Great Port)", tier: R8b, country: Russia, lat: 59.882935, lon: 30.169884, radius_km: 5}
+  - {name: Kaliningrad,             tier: R8b, country: Russia, lat: 54.701324, lon: 20.451921, radius_km: 5}
+
+# R8c terminals — OUTSIDE our AIS bounding boxes. We will NEVER infer calls here
+# from our own positions. They are only surfaced when an EXTERNAL fact (from
+# OpenSanctions/GUR) already states a call. Coordinates are reference only.
+russian_external_terminals:
+  - {name: Novorossiysk, country: Russia, lat: 44.72, lon: 37.79}
+  - {name: Kozmino,      country: Russia, lat: 42.73, lon: 133.07}
+  - {name: Murmansk,     country: Russia, lat: 68.97, lon: 33.05}

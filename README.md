@@ -94,6 +94,46 @@ py src/age_risk_monitor.py           # single pass; --loop to run continuously
 py src/report/age_risk_report.py     # build-year coverage by source + R1 flags
 ```
 
+## M4 — Port calls at Russian Baltic terminals
+
+`src/inference/port_calls.py` infers port calls from AIS history: a vessel inside
+a terminal's circular zone (`config/geofences.yaml`) at low speed (≤1 kn) for a
+sustained run is recorded in `port_calls` as an inference, tagged by tier, with a
+method note and the exact `position_id`s used.
+
+- **R8a (major):** Primorsk, Ust-Luga
+- **R8b (secondary):** Vysotsk, Vyborg, St. Petersburg (Great Port), Kaliningrad
+- **R8c (external only):** Novorossiysk, Kozmino, Murmansk are outside our AIS
+  coverage — never inferred from our positions. We only surface them from an
+  external port-call fact, clearly marked `external-fact`. (We store no such
+  facts yet, so R8c is currently empty — see `TODO.md`.)
+
+```
+py src/inference/port_calls.py    # disabled by default (see below); RUN_PORT_CALLS=1 to force
+py scripts/diag_zones.py          # positions per zone (coverage check)
+```
+
+### Russian-terminal coverage limitation (important — we tried, and recorded why)
+
+We built and verified the port-call detector, then tried to run it against live
+AIS for all six terminals. It found **zero** calls — and we traced exactly why:
+the **free aisstream (terrestrial-receiver) network has no coverage in Russian
+coastal waters.** Across 52,000+ captured positions the **easternmost is ~26.85 E**,
+while every terminal is further east (Ust-Luga 28.4, Primorsk 28.7, Vyborg/Vysotsk
+~28.6, St. Petersburg 30.2); Kaliningrad has zero positions too. We briefly
+extended the bounding box east to test this, confirmed the dead zone, and trimmed
+`baltic_sea` `lon_max` back to **27.0** so we don't subscribe to waters that never
+report.
+
+This is a **data-source limitation, not a code bug.** The detector is unit-tested
+(`tests/test_port_calls.py`) and demonstrably fires on real berthed vessels where
+we *do* have coverage (e.g. Rotterdam, Gdynia, IJmuiden). Because detection at the
+Russian terminals will always return 0 with this source, **AIS inference here is
+disabled by default** (`AIS_INFERENCE_ENABLED = False` in `port_calls.py`); the
+logic is **kept, not discarded**, in case a covered source (e.g. satellite AIS) is
+added later. To see these terminals we would instead need satellite AIS (paid) or
+external port-call facts — the R8c approach (see `TODO.md`).
+
 ## Why these vessels are included (AIS ship-type selection)
 
 This project tracks vessels that could pose an **environmental threat to the
