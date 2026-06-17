@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS sources (
     type         TEXT NOT NULL,      -- sanctions | list | registry | psc | ais
     url          TEXT,               -- homepage / API root
     license      TEXT,               -- licensing terms (e.g. 'CC-BY-NC for non-commercial use')
-    accessed_at  TEXT                -- UTC ISO-8601 of when we last used this source
+    accessed_at  TEXT,               -- UTC ISO-8601 of when we last used this source
+    note         TEXT                -- e.g. confidence/quality flag ('tertiary, crowd-edited')
 );
 
 -- THE CORE TABLE. One row per (vessel, field, value). Append-only.
@@ -155,6 +156,9 @@ def _migrate(conn):
     for name, decl in (("ais_ship_type", "INTEGER"), ("type_category", "TEXT")):
         if name not in cols:
             conn.execute(f"ALTER TABLE positions ADD COLUMN {name} {decl}")
+    scols = {r["name"] for r in conn.execute("PRAGMA table_info(sources)")}
+    if "note" not in scols:
+        conn.execute("ALTER TABLE sources ADD COLUMN note TEXT")
 
 
 def init_db(db_path=DEFAULT_DB_PATH):
@@ -166,18 +170,19 @@ def init_db(db_path=DEFAULT_DB_PATH):
     return conn
 
 
-def upsert_source(conn, source_id, name, type, url=None, license=None, accessed_at=None):
+def upsert_source(conn, source_id, name, type, url=None, license=None,
+                  accessed_at=None, note=None):
     """Insert or update a row in the sources table."""
     with conn:
         conn.execute(
             """
-            INSERT INTO sources (source_id, name, type, url, license, accessed_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO sources (source_id, name, type, url, license, accessed_at, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(source_id) DO UPDATE SET
                 name=excluded.name, type=excluded.type, url=excluded.url,
-                license=excluded.license, accessed_at=excluded.accessed_at
+                license=excluded.license, accessed_at=excluded.accessed_at, note=excluded.note
             """,
-            (source_id, name, type, url, license, accessed_at),
+            (source_id, name, type, url, license, accessed_at, note),
         )
 
 

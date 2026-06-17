@@ -139,7 +139,15 @@ each rule's data (e.g. R6 from Paris MoU records, R1 from Equasis build year).
 - **Ukrainian GUR catalogue**: public shadow-fleet/sanctioned vessels.
 - **aisstream.io**: free live AIS via websocket. The position source.
 - **Equasis**: ship particulars (age, flag, class, history) — manual/respectful use.
-- **Forbidden**: scraping VesselFinder, MarineTraffic, Kpler, or any ToS-protected site.
+- **Wikidata** (added at M3, retroactively backfilled): build year, ship type, owner,
+  tonnage, former names — via SPARQL on the "IMO ship number" property. CC0, built
+  for automated reuse, free. Treat as a **tertiary, lower-confidence source**: store
+  alongside any OpenSanctions/EU value for the same field, never overwrite it.
+  Coverage is low (most vessels, especially non-notable tankers, have no Wikidata
+  item) — a small but free and legitimate supplement, not a fix for the Equasis gap.
+- **Forbidden**: scraping VesselFinder, MarineTraffic, Kpler, or any ToS-protected
+  site (this includes world-ships.com and balticshipping.com — both explicitly
+  restrict copying/automated access in their terms; checked and excluded).
 
 ### 2.6 Honest limitations to keep visible in the product
 - AIS can be spoofed by the very ships we watch, so a position is evidence, not proof;
@@ -148,6 +156,23 @@ each rule's data (e.g. R6 from Paris MoU records, R1 from Equasis build year).
   unknown.
 - The lists disagree; we surface the disagreement rather than picking a "truth."
 - "Pattern, not a verdict" — the tool informs human judgement, it does not accuse.
+
+### 2.7 How to display an unknown field (exact wording, do not improvise)
+A field is `unknown` when no compliant, redistributable source has it — including
+when the only place we've seen the value is a restricted-access registry whose terms
+forbid redistribution (see CLAUDE.md rule 8). Unknown is a finding, not a blank.
+
+- In the evidence sheet, an unknown field reads, e.g.:
+  **"Age: unverifiable from open sources"** (not "Age: —" and not omitted).
+- Where a risk rule depends on an unknown field, show:
+  **"R1 (age) not evaluated — build year unverifiable"** next to the score
+  breakdown, so a reader can see which rules *could* fire, not just which did.
+- On the map/list view, give vessels with several unknown fields a distinct visual
+  marker (e.g. an "opacity" indicator) rather than treating them as low-risk by
+  default — an opaque vessel is not the same as a verified-low-risk one.
+- In CSV/JSON exports, the value for an unknown field is the literal string
+  `"unverifiable"`, never an empty cell, so it can't be misread as a zero or a
+  missing-data artefact during analysis.
 
 ---
 
@@ -182,6 +207,18 @@ timestamp." Spot-check one IMO against the live OpenSanctions website.
 
 **Check:** Pick one vessel on KSE but not on the EU list (or vice versa) and confirm
 the report flags the disagreement.
+
+### M1b — Wikidata connector (added mid-session, after M2, run retroactively)
+> Add a new fact source: Wikidata. For every IMO already in our database, query the
+> Wikidata SPARQL endpoint on the "IMO ship number" property for build year, ship
+> type, owner, tonnage, and former names. Write matches to `facts` with
+> `source_id="wikidata"`, the specific item URL, and a timestamp; register "wikidata"
+> in `sources` flagged as tertiary/lower-confidence; never overwrite an existing
+> primary-source value, store alongside it instead. No match → leave `unknown`.
+> Run once against existing data, then fold into the regular refresh.
+
+**Check:** Low match-rate is expected and correct, not a bug. Confirm Wikidata
+values never replaced an existing OpenSanctions/EU value for the same field.
 
 ### M3 — Live AIS feed (filtered by ship type)
 > Connect to the aisstream.io websocket using my key from .env. Subscribe to the

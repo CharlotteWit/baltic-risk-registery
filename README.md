@@ -62,6 +62,38 @@ vessels rename to shed a flagged identity. It is treated as a **DERIVED inferenc
 (shown separately from facts), because `first_seen` is a proxy for the real rename
 date. The real-time ground truth is the name broadcast over **AIS** (arrives in M3).
 
+## Additional fact source: Wikidata (tertiary)
+
+`src/connectors/wikidata.py` queries the Wikidata SPARQL endpoint by "IMO ship
+number" (P458) for every IMO in our database and stores any build year, ship
+type, owner/operator, gross tonnage and names it finds. It is registered as a
+**tertiary, crowd-edited source (CC0), lower confidence** than OpenSanctions or
+the EU list, and every Wikidata fact says so. Because `facts` is append-only, a
+Wikidata value never overwrites a primary value — both are stored as dated rows,
+so a reader can see where they agree or disagree. IMOs with no Wikidata item get
+nothing written (left unknown). Wikidata has no deadweight property, so deadweight
+is never set from this source. Wikidata is part of `src/refresh.py`.
+
+```
+py src/connectors/wikidata.py        # batch over all known IMOs
+py scripts/show_wikidata.py 9175078  # show a vessel's Wikidata facts vs primary
+```
+
+## Early risk preview: rule R1 (vessel age > 20)
+
+`src/age_risk.py` + `src/age_risk_monitor.py` are a working preview of the full
+M5 risk engine — just one rule for now, applied continuously to vessels seen via
+AIS. When a vessel is sighted (and passed the ship-type filter), if we have no
+build year for its IMO from any source we query Wikidata for it; once a build
+year is known, vessels over 20 years old get a `risk_flags` row (`rule_id='R1'`,
+weight 3) whose evidence points to the exact build-year fact used. This is what
+lets us flag old, high-risk vessels that are **not** on any sanction list.
+
+```
+py src/age_risk_monitor.py           # single pass; --loop to run continuously
+py src/report/age_risk_report.py     # build-year coverage by source + R1 flags
+```
+
 ## Why these vessels are included (AIS ship-type selection)
 
 This project tracks vessels that could pose an **environmental threat to the

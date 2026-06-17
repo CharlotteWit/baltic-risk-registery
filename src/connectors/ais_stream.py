@@ -49,6 +49,7 @@ from dotenv import load_dotenv
 import db
 from provenance import utc_now_iso
 from ais_types import category_for_type, should_store, EXCLUDE_CATEGORIES
+from identity import is_valid_imo
 
 WS_URL = "wss://stream.aisstream.io/v0/stream"
 SOURCE_ID = "aisstream"
@@ -93,7 +94,7 @@ async def run(conn, api_key, seconds, max_messages, progress_every=500):
 
     mmsi_cat, mmsi_code = {}, {}          # learned from ShipStaticData
     stats = {"received": 0, "stored": 0, "dropped_type": 0, "static_seen": 0,
-             "watchlist_hits": 0, "distinct_mmsi": set()}
+             "positions_with_imo": 0, "watchlist_hits": 0, "distinct_mmsi": set()}
     start = time.monotonic()
     print(f"Connecting to aisstream; listening {seconds}s over {len(boxes)} regions "
           f"(watch-list: {len(watch_imos)} IMOs)...", flush=True)
@@ -116,8 +117,11 @@ async def run(conn, api_key, seconds, max_messages, progress_every=500):
                 mmsi_cat[mmsi] = category_for_type(sd.get("Type"))
                 mmsi_code[mmsi] = sd.get("Type")
                 imo = str(sd.get("ImoNumber") or "").strip()
-                if imo in watch_imos and mmsi not in mmsi_to_imo:
-                    mmsi_to_imo[mmsi] = imo       # learn MMSI<->IMO from AIS itself
+                if is_valid_imo(imo):
+                    # Learn MMSI<->IMO from AIS for ANY vessel (not just watch-list),
+                    # so non-registry vessels also get an IMO for the age pipeline.
+                    # A pre-existing mapping from facts (watch-list) takes precedence.
+                    mmsi_to_imo.setdefault(mmsi, imo)
                 continue
 
             if mt != "PositionReport":
@@ -132,7 +136,9 @@ async def run(conn, api_key, seconds, max_messages, progress_every=500):
                 continue
             imo = mmsi_to_imo.get(mmsi)
             if imo:
-                stats["watchlist_hits"] += 1
+                stats["positions_with_imo"] += 1
+                if imo in watch_imos:
+                    stats["watchlist_hits"] += 1
             stats["distinct_mmsi"].add(mmsi)
             conn.execute(
                 """INSERT INTO positions (imo, mmsi, lat, lon, sog, cog, nav_status,
