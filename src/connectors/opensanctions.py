@@ -67,8 +67,9 @@ DATASET_TO_LIST = {
     "us_ofac_cons": "OFAC",
     "gb_fcdo_sanctions": "UK",
     "gb_hmt_sanctions": "UK",
-    "ua_war_sanctions": "UA_war_sanctions",
+    "ua_war_sanctions": "GUR",          # war-sanctions.gur.gov.ua (Ukraine DI / GUR)
     "ua_nsdc_sanctions": "UA_NSDC",
+    "un_1718_vessels": "UN",
 }
 
 

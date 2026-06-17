@@ -12,6 +12,20 @@ name/flag still shows up as a change.
 import re
 
 
+def is_valid_imo(value):
+    """True if `value` is a well-formed 7-digit IMO number per its check digit.
+
+    IMO rule: multiply the first 6 digits by 7,6,5,4,3,2, sum them; the last
+    digit of that sum must equal the 7th digit. This catches malformed or
+    non-IMO identifiers, but does NOT prove the number belongs to a real ship
+    (that needs the IMO registry — see GISIS verification in TODO.md)."""
+    digits = re.sub(r"\D", "", str(value or ""))
+    if len(digits) != 7:
+        return False
+    checksum = sum(int(digits[i]) * (7 - i) for i in range(6))
+    return checksum % 10 == int(digits[6])
+
+
 def normalize_identity_value(field, value):
     """Return a comparison key for a value. Display still uses the raw value;
     this is only for deciding whether two values are 'the same'.

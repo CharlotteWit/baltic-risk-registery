@@ -36,6 +36,23 @@ design and the non-negotiable provenance rules.
 _Still to come: the official EU consolidated-list connector (EU vessel sanctions
 are already captured via OpenSanctions in the meantime, cited to the EU datasets)._
 
+**M2 — cross-source reconciliation (working)**
+- `src/report/reconcile.py` — shows, per IMO, which core authorities list a vessel
+  (EU, OFAC, UK, GUR, UN) and surfaces the **disagreements** (e.g. 431 vessels are
+  on GUR but not on the EU list). Prints a summary + sample tables and writes the
+  full matrix to `exports/reconciliation.csv`. Includes IMO check-digit validation.
+- GUR = OpenSanctions `ua_war_sanctions` (war-sanctions.gur.gov.ua), confirmed via
+  the dataset's publisher URL. **KSE is not available via OpenSanctions** — its own
+  connector is parked in `TODO.md`; the report states the gap rather than hiding it.
+- `scripts/show_membership.py` — spot-check one vessel's list membership + sources.
+- `tests/test_reconcile.py` — membership matrix and disagreement detection.
+
+Run it:
+```
+py src/report/reconcile.py
+py scripts/show_membership.py 8227238
+```
+
 ### Which name/flag is "current"? (the naming rule)
 A vessel often carries many names across the lists. We store **all** of them as
 facts. The single operative name/flag shown to a user is **the latest known** —

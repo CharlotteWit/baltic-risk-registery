@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from identity import (normalize_identity_value, group_identity_history,
-                      recent_changes, current_value, display_name)
+                      recent_changes, current_value, display_name, is_valid_imo)
 
 CUTOFF = "2026-03-18T00:00:00+00:00"
 
@@ -74,6 +74,16 @@ def test_display_name_prefers_mixed_case():
     print("PASS: display_name prefers the readable mixed-case variant")
 
 
+def test_imo_check_digit():
+    assert is_valid_imo("9332810")        # real IMO (P. FOS)
+    assert is_valid_imo("8227238")        # real IMO (Karpinskiy)
+    assert is_valid_imo("IMO9332810")     # prefix tolerated
+    assert not is_valid_imo("9332811")    # wrong check digit
+    assert not is_valid_imo("12345")      # too short
+    assert not is_valid_imo("")           # empty
+    print("PASS: IMO check-digit validation accepts real IMOs, rejects malformed")
+
+
 if __name__ == "__main__":
     test_normalize_ignores_case_and_spacing()
     test_casing_variant_is_not_a_change()
@@ -81,4 +91,5 @@ if __name__ == "__main__":
     test_single_value_is_never_a_change()
     test_current_value_is_latest_known()
     test_display_name_prefers_mixed_case()
+    test_imo_check_digit()
     print("\nAll identity tests passed.")
