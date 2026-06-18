@@ -134,6 +134,35 @@ logic is **kept, not discarded**, in case a covered source (e.g. satellite AIS) 
 added later. To see these terminals we would instead need satellite AIS (paid) or
 external port-call facts — the R8c approach (see `TODO.md`).
 
+## Eastbound transit & declared-destination cross-check (rule R8d)
+
+The AIS connector now captures each vessel's self-declared **Destination** from
+`ShipStaticData` and stores it as a dated fact (`ais_destination`) — what the
+vessel *said*, never a verified call.
+
+`src/inference/eastbound_transit.py` then looks for vessels that **leave our
+coverage at the eastern edge** (last position near ~27 E, in the Gulf-of-Finland
+latitude band, moving eastbound) and cross-checks the declared destination **by
+direction**: a port *west* of the edge (Rotterdam, but also Kaliningrad, Helsinki,
+Riga…) cannot be reached by exiting east. When the declaration is **contradicted**
+(declared west, exited east) or **unknown/blank**, we record a low-confidence
+inference — rule **R8d**, weight 1 — *"transited toward the eastern Gulf of Finland
+(Russian/Finnish/Estonian ports) — not a confirmed call"*, alongside the declared
+destination. A *consistent* eastern declaration (e.g. `RUULU`) needs no inference.
+
+Honest framing, baked in:
+- **"East" is not "Russia."** The eastern Gulf is shared with Finland (Kotka/
+  Hamina) and Estonia (Sillamäe/Narva); we say "eastern Gulf", never "docked in
+  Russia".
+- **Low confidence** (weight 1, tunable in `rules.yaml`): AIS can be spoofed and an
+  edge position may be transit, not a true exit.
+- **Coverage:** the free AIS feed barely reaches the eastern edge, so real events
+  are rare — but the declared-destination capture works everywhere.
+
+```
+py src/inference/eastbound_transit.py
+```
+
 ## Why these vessels are included (AIS ship-type selection)
 
 This project tracks vessels that could pose an **environmental threat to the

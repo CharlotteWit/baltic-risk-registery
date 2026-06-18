@@ -57,6 +57,12 @@ rules:
     weight: 2
     data_source: "port_calls inference"
 
+  - id: R8d
+    description: "Transited toward the eastern Gulf of Finland (exited east) with a destination that is unknown or contradicted by the eastbound course — low confidence, NOT a confirmed call"
+    weight: 1
+    confidence: low
+    data_source: "eastbound_transit inference (positions + ais_destination fact)"
+
   - id: R9
     description: "Loitering pattern consistent with ship-to-ship transfer"
     weight: 2

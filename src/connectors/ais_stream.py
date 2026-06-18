@@ -47,9 +47,11 @@ import yaml
 from dotenv import load_dotenv
 
 import db
-from provenance import utc_now_iso
+from provenance import utc_now_iso, Fact, store_fact
 from ais_types import category_for_type, should_store, EXCLUDE_CATEGORIES
 from identity import is_valid_imo
+
+AISSTREAM_URL = "https://aisstream.io"   # source_url for AIS-derived facts (stream, no per-record URL)
 
 WS_URL = "wss://stream.aisstream.io/v0/stream"
 SOURCE_ID = "aisstream"
@@ -93,8 +95,10 @@ async def run(conn, api_key, seconds, max_messages, progress_every=500):
            "FilterMessageTypes": ["PositionReport", "ShipStaticData"]}
 
     mmsi_cat, mmsi_code = {}, {}          # learned from ShipStaticData
+    dest_seen = {}                        # imo -> last declared destination stored this run (dedup)
     stats = {"received": 0, "stored": 0, "dropped_type": 0, "static_seen": 0,
-             "positions_with_imo": 0, "watchlist_hits": 0, "distinct_mmsi": set()}
+             "positions_with_imo": 0, "watchlist_hits": 0, "destinations": 0,
+             "distinct_mmsi": set()}
     start = time.monotonic()
     print(f"Connecting to aisstream; listening {seconds}s over {len(boxes)} regions "
           f"(watch-list: {len(watch_imos)} IMOs)...", flush=True)
@@ -122,6 +126,16 @@ async def run(conn, api_key, seconds, max_messages, progress_every=500):
                     # so non-registry vessels also get an IMO for the age pipeline.
                     # A pre-existing mapping from facts (watch-list) takes precedence.
                     mmsi_to_imo.setdefault(mmsi, imo)
+                # Capture the self-declared Destination as a dated fact (the vessel
+                # SAID this — a fact about its broadcast, not a verified call).
+                dest = (sd.get("Destination") or "").strip()
+                dest_imo = mmsi_to_imo.get(mmsi) or (imo if is_valid_imo(imo) else None)
+                if dest and dest_imo and dest_seen.get(dest_imo) != dest:
+                    store_fact(conn, Fact(dest_imo, "ais_destination", dest, SOURCE_ID,
+                                          AISSTREAM_URL, normalize_time(meta.get("time_utc")),
+                                          f"self-declared via AIS (MMSI {mmsi}); not a verified call"))
+                    dest_seen[dest_imo] = dest
+                    stats["destinations"] += 1
                 continue
 
             if mt != "PositionReport":
