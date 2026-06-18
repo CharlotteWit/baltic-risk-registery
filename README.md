@@ -198,7 +198,23 @@ AIS-discovered with no age and no listing, so their score-0 is really
 _M5 part 2 (size-distribution analysis to decide a minimum-size rule) is still to
 do — it needs AIS `Dimension` capture, not yet implemented._
 
-## Why these vessels are included (AIS ship-type selection)
+## M6 — Map & evidence sheets
+
+`src/report/map_report.py` builds a local Leaflet map (`exports/map.html`) of
+vessels that have both a last-known AIS position and a risk score, coloured by
+band (red = high, orange = elevated, green = low) and clustered per band. Clicking
+a vessel opens its evidence sheet in the popup, with two clearly separated
+sections:
+- **FACTS (source-reported)** — current value per field, each with a clickable
+  link to its source and the retrieval date.
+- **INFERENCES (computed)** — the risk rules that fired, their weight and evidence.
+
+```
+py src/report/map_report.py
+start exports\map.html        # opens in your browser (Windows)
+```
+
+(The generated `exports/map.html` is gitignored — rebuild it from the DB anytime.)
 
 This project tracks vessels that could pose an **environmental threat to the
 Baltic and North Sea**. The live AIS feed (M3) therefore keeps:

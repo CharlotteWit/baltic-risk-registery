@@ -5,3 +5,4 @@ requests        # HTTP calls to OpenSanctions / EU list
 python-dotenv   # loads API keys from the .env file
 PyYAML          # reads rules.yaml and config files
 websockets      # live AIS websocket stream (aisstream.io)
+folium          # local Leaflet map (M6)

@@ -29,6 +29,12 @@ M-series milestones are complete.)
       has nothing to surface. The GUR per-vessel pages list port calls; ingesting
       those as structured `port_call`/`last_port` facts would populate R8c.
 
+## Scoring decisions (later)
+- [ ] **`insufficient_data` band** — ~2,569 vessels score 0 only because we have
+      no age and no list membership for them ("unknown", not "low risk"). Decide
+      whether to add a distinct band/flag so absence-of-evidence isn't shown as
+      low risk. (User is thinking about it.)
+
 ## Analysis (later)
 - [ ] **Military / law-enforcement / SAR proximity analysis** — these vessel
       types are kept in the feed. Later, analyse their proximity to or
