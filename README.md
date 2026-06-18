@@ -171,23 +171,29 @@ every rule per vessel against real stored evidence, writes each fired rule to
 `risk_scores`. Fully recomputable; change a weight in `rules.yaml`, re-run, and the
 scores change (verified).
 
-Crucially it is explicit about **three** states per rule — `triggered`,
-`not_triggered`, and `not_evaluated` — so a data gap is never a silent zero:
+It is explicit about three states per rule — `triggered`, `not_triggered`,
+`not_evaluated` — so a gap is never a silent zero.
 
-- **Evaluable now:** R1/R1b (age), R3 (flag change), R4 (name change), R5 (FoC
-  flag), R6 (PSC detention list), R10 (sanctions listing).
-- **Data gaps (not_evaluated):** R2 (no insurer data), R7 (AIS gaps — intermittent
-  capture), R9 (loitering/STS), R8 (Russian-terminal calls — no AIS coverage).
-  R8d (eastbound) is evaluated but rarely fires for the same coverage reason.
+**Active rules and weights (calibrated 2026-06-18):**
+- **R1 age > 20 → 5**, **R1b age 15–20 → 3** — age weighs highest (an old hull is
+  the core spill risk on its own, sanctioned or not).
+- **R6 PSC detention/ban → 2** — these ships were actually inspected and detained.
+- **R3 flag change, R4 name change, R5 FoC flag, R10 sanctions listing → 1 each**
+  — context all pointing to the same shadow-fleet scenario.
+- **R8d eastbound transit → 1** (low confidence; rarely fires — coverage).
+
+**Removed** (cannot evaluate with our data, so deleted rather than silently zeroed):
+R2 (no insurer data), R7 (AIS gaps — uncollectable), R8 (Russian-terminal calls —
+no AIS coverage), R9 (loitering — not reliably definable).
 
 ```
 py src/inference/risk_engine.py    # score everyone + show the top vessel's breakdown
 ```
 
 _Caution when reading bands: a score of 0 can mean "evaluated and low" OR "we have
-almost no data" — absence of evidence is not low risk. ~2,750 of the scored
-vessels are AIS-discovered with little registry data, so their low scores are
-really "insufficient data". (Calibration discussion ongoing.)_
+almost no data" — absence of evidence is not low risk. ~2,569 scored vessels are
+AIS-discovered with no age and no listing, so their score-0 is really
+"insufficient data" (a dedicated band for this is still open for decision)._
 
 _M5 part 2 (size-distribution analysis to decide a minimum-size rule) is still to
 do — it needs AIS `Dimension` capture, not yet implemented._

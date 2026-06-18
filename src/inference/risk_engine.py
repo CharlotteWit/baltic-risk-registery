@@ -90,9 +90,6 @@ def score_vessel(conn, imo, foc):
         out["R1"] = (TRIG if age > 20 else NOT, ev)
         out["R1b"] = (TRIG if 15 <= age <= 20 else NOT, ev)
 
-    # --- R2 : insurer (no data) ---
-    out["R2"] = (NA, {"reason": "no insurer data collected for any vessel"})
-
     # --- R3 / R4 : flag / name change within 12 months ---
     for rule, field in (("R3", "flag"), ("R4", "name")):
         rows = _identity_rows(conn, imo, field)
@@ -132,23 +129,10 @@ def score_vessel(conn, imo, foc):
         out["R6"] = (NOT if any_list else NA,
                      {"reason": None if any_list else "no list_membership for this vessel"})
 
-    # --- R7 : AIS gap (data gap) ---
-    out["R7"] = (NA, {"reason": "AIS capture is intermittent — a gap cannot be distinguished from non-capture"})
-
-    # --- R8 : Russian-terminal call ---
-    pcs = conn.execute("SELECT port_call_id, port, tier FROM port_calls WHERE imo=?", (imo,)).fetchall()
-    if pcs:
-        out["R8"] = (TRIG, {"port_calls": [dict(r) for r in pcs]})
-    else:
-        out["R8"] = (NA, {"reason": "no port-call data (AIS has no coverage at Russian terminals; detection disabled)"})
-
     # --- R8d : eastbound transit (owned by eastbound_transit; read its flag) ---
     fl = conn.execute("SELECT evidence FROM risk_flags WHERE imo=? AND rule_id='R8d' AND triggered=1",
                       (imo,)).fetchone()
     out["R8d"] = ((TRIG, json.loads(fl["evidence"])) if fl else (NOT, {"reason": "no east-exit observed"}))
-
-    # --- R9 : loitering / STS (data gap) ---
-    out["R9"] = (NA, {"reason": "intermittent capture — cannot detect loitering/STS patterns"})
 
     # --- R10 : sanctions listing ---
     srows = conn.execute(
@@ -211,7 +195,7 @@ def show(conn, imo):
         print(f"SCORE: {sc['total_score']}  BAND: {sc['band'].upper()}")
     print('='*72)
     descr = {x["id"]: x["description"] for x in yaml.safe_load(RULES_PATH.read_text(encoding='utf-8'))["rules"]}
-    for rule in ("R1", "R1b", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R8d", "R9", "R10"):
+    for rule in ("R1", "R1b", "R3", "R4", "R5", "R6", "R8d", "R10"):
         state, ev = res[rule]
         w = weights.get(rule, 0)
         mark = {"triggered": f"FIRED  +{w}", "not_triggered": "  -  ", "not_evaluated": " n/a "}[state]

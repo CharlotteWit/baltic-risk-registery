@@ -5,35 +5,38 @@
 # and records, for every vessel, exactly which rules fired and the evidence behind
 # each. Change a weight here, re-run, and the scores change accordingly.
 #
-# Weights below are a STARTING POINT from the project brief — illustrative, to be
-# calibrated. The framing is environmental: an old, uninsured tanker scores high
-# whether or not it is sanctioned.
+# Calibration (2026-06-18, by the user):
+#   * AGE weighs highest — an old hull is the core environmental-spill risk on its
+#     own, sanctioned or not (R1=5, R1b=3).
+#   * PSC detention (R6=2) weighs heavier than the context factors: these ships
+#     were actually inspected and detained.
+#   * Flag/name changes, FoC flag, and sanctions listing are all context pointing
+#     to the same shadow-fleet scenario, so each counts 1 (R3, R4, R5, R10).
+#   * REMOVED rules we cannot evaluate with our data: R2 (no insurer data),
+#     R7 (AIS gaps — cannot collect), R8 (Russian-terminal calls — no AIS
+#     coverage), R9 (loitering — cannot define reliably). They are gone, not
+#     silently zeroed.
 
 rules:
   - id: R1
     description: "Vessel age over 20 years"
-    weight: 3
-    data_source: "built_year fact (e.g. Equasis / registry)"
+    weight: 5
+    data_source: "built_year fact (e.g. Equasis / registry / Wikidata)"
 
   - id: R1b
     description: "Vessel age 15-20 years"
-    weight: 2
-    data_source: "built_year fact"
-
-  - id: R2
-    description: "No recognised International Group P&I insurer / unknown insurer"
     weight: 3
-    data_source: "insurer fact"
+    data_source: "built_year fact"
 
   - id: R3
     description: "Flag changed within the last 12 months"
-    weight: 2
-    data_source: "history of flag facts (append-only facts table)"
+    weight: 1
+    data_source: "history of flag facts (identity_history)"
 
   - id: R4
     description: "Name changed within the last 12 months"
     weight: 1
-    data_source: "history of name facts"
+    data_source: "history of name facts (identity_history)"
 
   - id: R5
     description: "Flag is a high flag-of-convenience-risk flag"
@@ -41,21 +44,9 @@ rules:
     data_source: "current flag fact + foc_flags list below"
 
   - id: R6
-    description: "Paris MoU (or other PSC) detention in the last 24 months"
+    description: "Paris MoU (or other PSC) detention/ban (already inspected & detained)"
     weight: 2
     data_source: "Port State Control detention records (via OpenSanctions)"
-
-  - id: R7
-    description: "AIS gap over N hours while inside a monitored zone"
-    weight: 2
-    data_source: "positions table (gap analysis)"
-    params:
-      gap_hours: 6
-
-  - id: R8
-    description: "Recent call at a Russian oil terminal (Primorsk, Ust-Luga, Novorossiysk, Kozmino)"
-    weight: 2
-    data_source: "port_calls inference"
 
   - id: R8d
     description: "Transited toward the eastern Gulf of Finland (exited east) with a destination that is unknown or contradicted by the eastbound course — low confidence, NOT a confirmed call"
@@ -63,18 +54,13 @@ rules:
     confidence: low
     data_source: "eastbound_transit inference (positions + ais_destination fact)"
 
-  - id: R9
-    description: "Loitering pattern consistent with ship-to-ship transfer"
-    weight: 2
-    data_source: "positions table (loitering analysis)"
-
   - id: R10
     description: "Listed by EU / OFAC / UK / GUR"
-    weight: 3
+    weight: 1
     data_source: "list_membership table"
 
-# Score bands (illustrative). Every score must still be expandable into the list
-# of rules that fired and the evidence behind each.
+# Score bands. Every score must still be expandable into the list of rules that
+# fired and the evidence behind each. (Realistic max with current rules ~12.)
 bands:
   - {name: low,      min: 0, max: 3}
   - {name: elevated, min: 4, max: 7}

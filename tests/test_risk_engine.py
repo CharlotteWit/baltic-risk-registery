@@ -47,11 +47,11 @@ def test_fired_rules_sum_to_score():
     res = re.score_vessel(conn, imo, foc)
     assert res["R1"][0] == "triggered"
     assert res["R10"][0] == "triggered"
-    assert res["R2"][0] == "not_evaluated"     # no insurer data -> never scored
+    assert "R2" not in res and "R7" not in res, "removed rules must not be evaluated"
     expected = weights["R1"] + weights["R10"]
     total = sum(weights.get(r, 0) for r, (st, _) in res.items() if st == "triggered")
     assert total == expected, (total, expected)
-    print(f"PASS: R1+R10 fired, R2 not_evaluated, score = {total} = {expected}")
+    print(f"PASS: R1+R10 fired (removed rules absent), score = {total} = {expected}")
 
 
 if __name__ == "__main__":
