@@ -204,7 +204,10 @@ do — it needs AIS `Dimension` capture, not yet implemented._
 vessels that have both a last-known AIS position and a risk score, coloured by
 band (red = high, orange = elevated, green = low) and clustered per band. Clicking
 a vessel opens its evidence sheet in the popup, with two clearly separated
-sections:
+sections. Colours: **red** high, **orange** elevated, **green** low *(assessed —
+we have age and/or list data and it's low)*, **grey** *insufficient data* (scored
+low ONLY because we have no build year and no list membership — absence of
+evidence, not a safety judgement). Sections:
 - **FACTS (source-reported)** — current value per field, each with a clickable
   link to its source and the retrieval date.
 - **INFERENCES (computed)** — the risk rules that fired, their weight and evidence.

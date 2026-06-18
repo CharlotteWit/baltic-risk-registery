@@ -28,7 +28,9 @@ from identity import group_identity_history, current_value, display_name
 
 OUT = Path(__file__).resolve().parents[2] / "exports" / "map.html"
 RULES = Path(__file__).resolve().parents[2] / "rules.yaml"
-BAND_COLOR = {"high": "red", "elevated": "orange", "low": "green"}
+# green 'low' = evaluated and genuinely low; grey 'insufficient' = scored low ONLY
+# because we have no age and no list data for it (absence of evidence, not safety).
+BAND_COLOR = {"high": "red", "elevated": "orange", "low": "green", "insufficient": "gray"}
 
 
 def rule_descr():
@@ -43,21 +45,28 @@ def vessel_name(conn, imo):
     return display_name(cur) if cur else ""
 
 
-def evidence_html(conn, imo, descr):
+def evidence_html(conn, imo, descr, insufficient=False):
     """Build the popup: header + FACTS section + INFERENCES section."""
     sc = conn.execute("SELECT total_score, band FROM risk_scores WHERE imo=?", (imo,)).fetchone()
     name = html.escape(vessel_name(conn, imo) or "(name unknown)")
     band = sc["band"] if sc else "?"
     score = sc["total_score"] if sc else "?"
-    color = BAND_COLOR.get(band, "gray")
+    if insufficient:
+        color, label = "gray", "INSUFFICIENT DATA"
+    else:
+        color, label = BAND_COLOR.get(band, "gray"), html.escape(str(band)).upper()
 
     parts = [
         f"<div style='font-family:sans-serif;font-size:12px;max-height:340px;overflow:auto'>",
         f"<div style='font-size:14px'><b>IMO {imo}</b> &nbsp; {name}</div>",
         f"<div>Risk score <b>{score}</b> &nbsp;"
         f"<span style='background:{color};color:white;padding:1px 6px;border-radius:3px'>"
-        f"{html.escape(str(band)).upper()}</span></div>",
+        f"{label}</span></div>",
     ]
+    if insufficient:
+        parts.append("<div style='color:#666;margin-top:3px'><i>Low score reflects "
+                     "MISSING DATA (no build year and not on any list), not a safety "
+                     "assessment.</i></div>")
 
     # --- FACTS (source-reported) ---
     facts = db.current_profile(conn, imo)
@@ -113,29 +122,39 @@ def build(conn):
            JOIN risk_scores s ON s.imo=p.imo
            GROUP BY p.imo""").fetchall()
 
+    # vessels we cannot really assess: no build year AND not on any list
+    built = {x["imo"] for x in conn.execute(
+        "SELECT DISTINCT imo FROM facts WHERE field='built_year' AND value IS NOT NULL")}
+    listed = {x["imo"] for x in conn.execute("SELECT DISTINCT imo FROM list_membership")}
+
     m = folium.Map(location=[58.0, 18.0], zoom_start=5, tiles="cartodbpositron")
-    # separate cluster per band so high-risk stays visible
-    clusters = {b: MarkerCluster(name=f"{b} risk").add_to(m) for b in ("high", "elevated", "low")}
-    counts = {"high": 0, "elevated": 0, "low": 0}
+    # separate cluster per band so high-risk stays visible; grey = insufficient data
+    clusters = {b: MarkerCluster(name=f"{b}").add_to(m)
+                for b in ("high", "elevated", "low", "insufficient")}
+    counts = {b: 0 for b in clusters}
     for r in rows:
-        band = r["band"]
-        if band not in clusters:
+        imo = r["imo"]
+        insufficient = imo not in built and imo not in listed
+        key = "insufficient" if insufficient else r["band"]
+        if key not in clusters:
             continue
-        popup = folium.Popup(evidence_html(conn, r["imo"], descr), max_width=360)
+        color = BAND_COLOR[key]
+        popup = folium.Popup(evidence_html(conn, imo, descr, insufficient), max_width=360)
         folium.CircleMarker(
             location=[r["lat"], r["lon"]], radius=5,
-            color=BAND_COLOR[band], fill=True, fill_color=BAND_COLOR[band], fill_opacity=0.8,
+            color=color, fill=True, fill_color=color, fill_opacity=0.8,
             popup=popup,
-            tooltip=f"IMO {r['imo']} — {band} ({r['total_score']})",
-        ).add_to(clusters[band])
-        counts[band] += 1
+            tooltip=f"IMO {imo} — {key} ({r['total_score']})",
+        ).add_to(clusters[key])
+        counts[key] += 1
 
     legend = ("<div style='position:fixed;bottom:20px;left:20px;z-index:9999;background:white;"
               "padding:8px;border:1px solid #999;font-family:sans-serif;font-size:12px'>"
               "<b>Risk band</b><br>"
               "<span style='color:red'>&#9679;</span> high<br>"
               "<span style='color:orange'>&#9679;</span> elevated<br>"
-              "<span style='color:green'>&#9679;</span> low<br>"
+              "<span style='color:green'>&#9679;</span> low (assessed)<br>"
+              "<span style='color:gray'>&#9679;</span> insufficient data<br>"
               "<i>click a vessel for its evidence sheet</i></div>")
     m.get_root().html.add_child(folium.Element(legend))
     folium.LayerControl().add_to(m)
