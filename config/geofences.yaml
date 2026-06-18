@@ -15,11 +15,9 @@ bounding_boxes:
     lat_max: 66.0
     lon_min: 9.0
     lon_max: 27.0
-  danish_straits:
-    lat_min: 54.5
-    lat_max: 58.0
-    lon_min: 9.5
-    lon_max: 13.0
+  # (danish_straits box removed 2026-06-18: it was lat 54.5-58, lon 9.5-13 —
+  #  completely inside baltic_sea above, so fully redundant. No coverage lost;
+  #  the Danish Straits chokepoint is still covered by baltic_sea.)
   north_sea:
     lat_min: 51.0
     lat_max: 61.0

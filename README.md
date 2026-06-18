@@ -201,16 +201,24 @@ do — it needs AIS `Dimension` capture, not yet implemented._
 ## M6 — Map & evidence sheets
 
 `src/report/map_report.py` builds a local Leaflet map (`exports/map.html`) of
-vessels that have both a last-known AIS position and a risk score, coloured by
-band (red = high, orange = elevated, green = low) and clustered per band. Clicking
-a vessel opens its evidence sheet in the popup, with two clearly separated
-sections. Colours: **red** high, **orange** elevated, **green** low *(assessed —
-we have age and/or list data and it's low)*, **grey** *insufficient data* (scored
-low ONLY because we have no build year and no list membership — absence of
-evidence, not a safety judgement). Sections:
-- **FACTS (source-reported)** — current value per field, each with a clickable
-  link to its source and the retrieval date.
-- **INFERENCES (computed)** — the risk rules that fired, their weight and evidence.
+vessels that have a last-known AIS position and a risk score. It opens fitted to
+the AIS bounding boxes (drawn as thin orange rectangles), uses OpenStreetMap tiles
+and plain Leaflet layers (one toggleable layer per category — no plugins, so it
+renders reliably). To keep the file light enough to render, **only red/orange
+vessels get a full evidence sheet**; everything else gets a one-line popup:
+
+| Colour | Meaning | Popup |
+|---|---|---|
+| 🔴 red | high risk | full evidence sheet |
+| 🟠 orange | elevated | full evidence sheet |
+| 🟢 green | low (assessed) | "no increased environmental risk" |
+| ⚪ grey | insufficient data (no age & not listed) | "limited information available" |
+| 🔵 blue | SAR / military / police | type only — assist/response vessel, not scored |
+
+The full evidence sheet has a **sticky header** (IMO, name, vessel type, score/band
+stay pinned while you scroll) and two visually distinct sections: **FACTS
+(source-reported)** — each value with a clickable source link and retrieval date —
+and **INFERENCES (computed)** — the risk rules that fired, with weight and evidence.
 
 ```
 py src/report/map_report.py
