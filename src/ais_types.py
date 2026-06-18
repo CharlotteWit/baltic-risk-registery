@@ -12,15 +12,16 @@ clearly-irrelevant types, and keep unknown/other for later size-based triage.
 """
 
 # We DROP only the categories below; EVERYTHING else is kept. Per the user's
-# assessment (2026-06-17): keep all tankers (any cargo can be an environmental
-# threat), keep unknown/other (triage later by size), keep HSC (40-49, triage
-# later), and keep military/noncombatant, law-enforcement and SAR because these
-# may interact with vessels in trouble at sea (proximity analysis later — see
-# TODO.md and the README "Why these vessels are included" section).
-EXCLUDE_CATEGORIES = {"fishing", "tug", "sailing", "pleasure", "passenger", "service"}
+# assessment: keep all tankers (any cargo can be an environmental threat), keep
+# unknown/other (triage later by size), and keep military/noncombatant,
+# law-enforcement and SAR because these may interact with vessels in trouble at
+# sea (proximity analysis later — see TODO.md and the README "Why these vessels
+# are included" section). High-speed craft (40-49) were DROPPED on 2026-06-18.
+EXCLUDE_CATEGORIES = {"fishing", "tug", "sailing", "pleasure", "passenger",
+                      "service", "hsc"}
 
 # Kept categories, for reference/documentation.
-INCLUDE_CATEGORIES = {"tanker", "cargo", "unknown", "other", "hsc",
+INCLUDE_CATEGORIES = {"tanker", "cargo", "unknown", "other",
                       "military", "law_enforcement", "sar"}
 
 
@@ -67,10 +68,10 @@ MAPPING_TABLE = [
     ("70-79", "Cargo (incl. bulk & general cargo)",             "cargo",  "KEEP"),
     ("0 / missing", "Not available",                            "unknown", "KEEP (tag)"),
     ("1-29, 38-39, 56-57, 90-99", "Reserved / WIG / other",     "other",  "KEEP (tag)"),
-    ("40-49", "High-speed craft",                               "hsc",    "KEEP"),
     ("35, 59", "Military / noncombatant",                       "military", "KEEP"),
     ("55",    "Law enforcement",                                "law_enforcement", "KEEP"),
     ("51",    "Search & rescue",                                "sar",    "KEEP"),
+    ("40-49", "High-speed craft",                               "hsc",    "drop"),
     ("60-69", "Passenger / ferries / cruise",                   "passenger", "drop"),
     ("36",    "Sailing",                                        "sailing", "drop"),
     ("37",    "Pleasure craft",                                 "pleasure", "drop"),

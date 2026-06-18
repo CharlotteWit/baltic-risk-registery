@@ -176,7 +176,6 @@ Baltic and North Sea**. The live AIS feed (M3) therefore keeps:
   ranges). We keep these for now rather than discarding them; a vessel can be
   triaged out later based on its size or registry data. Keeping them avoids
   throwing away something that might matter.
-- **High-speed craft** (40–49), for the same "decide later by size/age" reason.
 - **Military, noncombatant, law-enforcement and search-and-rescue vessels**
   (35, 51, 55, 59). We keep these not as risk subjects themselves but because they
   **may interact with vessels in trouble at sea** — responding to a breakdown,
@@ -184,8 +183,9 @@ Baltic and North Sea**. The live AIS feed (M3) therefore keeps:
   be a useful contextual signal, which we may analyse later (see `TODO.md`).
 
 It **drops** vessel types that are not relevant to this environmental-risk scope:
-passenger ships/ferries, sailing and pleasure craft, fishing vessels, tugs/towing,
-and port-service craft (pilots, tenders, dredgers, etc.).
+passenger ships/ferries, high-speed craft (40–49, dropped 2026-06-18), sailing and
+pleasure craft, fishing vessels, tugs/towing, and port-service craft (pilots,
+tenders, dredgers, etc.).
 
 The selection is by behaviour and vessel category only. It is **not** an
 assertion that any vessel or operator is doing anything wrongful — it simply

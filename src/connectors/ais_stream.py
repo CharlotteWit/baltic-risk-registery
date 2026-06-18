@@ -37,6 +37,7 @@ import json
 import os
 import sys
 import time
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -74,6 +75,28 @@ def load_watchlist(conn):
     return mmsi_to_imo, imos
 
 
+def reclassify_pending(conn, position_ids, category, code):
+    """Once a vessel's AIS ship type is learned, fix the positions we already
+    stored for it this session as 'unknown'. This is the ONLY sanctioned overwrite
+    in the project: 'unknown' -> a known type (never a known value -> something
+    else). If the learned type is an excluded category, drop those rows instead.
+
+    Returns (reclassified, dropped)."""
+    if not position_ids or category == "unknown":
+        return (0, 0)
+    qmarks = ",".join("?" * len(position_ids))
+    if not should_store(category):
+        cur = conn.execute(
+            f"DELETE FROM positions WHERE position_id IN ({qmarks}) AND type_category='unknown'",
+            tuple(position_ids))
+        return (0, cur.rowcount)
+    cur = conn.execute(
+        f"UPDATE positions SET type_category=?, ais_ship_type=? "
+        f"WHERE position_id IN ({qmarks}) AND type_category='unknown'",
+        (category, code, *position_ids))
+    return (cur.rowcount, 0)
+
+
 def normalize_time(time_utc):
     """aisstream time '2026-06-17 07:28:50.957... +0000 UTC' -> ISO UTC string."""
     if isinstance(time_utc, str) and len(time_utc) >= 19:
@@ -96,9 +119,10 @@ async def run(conn, api_key, seconds, max_messages, progress_every=500):
 
     mmsi_cat, mmsi_code = {}, {}          # learned from ShipStaticData
     dest_seen = {}                        # imo -> last declared destination stored this run (dedup)
+    pending_unknown = defaultdict(list)   # mmsi -> position_ids stored 'unknown' this run
     stats = {"received": 0, "stored": 0, "dropped_type": 0, "static_seen": 0,
              "positions_with_imo": 0, "watchlist_hits": 0, "destinations": 0,
-             "distinct_mmsi": set()}
+             "reclassified": 0, "dropped_late": 0, "distinct_mmsi": set()}
     start = time.monotonic()
     print(f"Connecting to aisstream; listening {seconds}s over {len(boxes)} regions "
           f"(watch-list: {len(watch_imos)} IMOs)...", flush=True)
@@ -118,8 +142,14 @@ async def run(conn, api_key, seconds, max_messages, progress_every=500):
             if mt == "ShipStaticData":
                 stats["static_seen"] += 1
                 sd = msg.get("Message", {}).get("ShipStaticData", {})
-                mmsi_cat[mmsi] = category_for_type(sd.get("Type"))
+                cat = category_for_type(sd.get("Type"))
+                mmsi_cat[mmsi] = cat
                 mmsi_code[mmsi] = sd.get("Type")
+                # retroactively correct this session's earlier 'unknown' positions
+                if cat != "unknown" and mmsi in pending_unknown:
+                    rec, drp = reclassify_pending(conn, pending_unknown.pop(mmsi), cat, sd.get("Type"))
+                    stats["reclassified"] += rec
+                    stats["dropped_late"] += drp
                 imo = str(sd.get("ImoNumber") or "").strip()
                 if is_valid_imo(imo):
                     # Learn MMSI<->IMO from AIS for ANY vessel (not just watch-list),
@@ -154,7 +184,7 @@ async def run(conn, api_key, seconds, max_messages, progress_every=500):
                 if imo in watch_imos:
                     stats["watchlist_hits"] += 1
             stats["distinct_mmsi"].add(mmsi)
-            conn.execute(
+            cur = conn.execute(
                 """INSERT INTO positions (imo, mmsi, lat, lon, sog, cog, nav_status,
                        timestamp, source_id, confidence, ais_ship_type, type_category)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'normal', ?, ?)""",
@@ -162,6 +192,8 @@ async def run(conn, api_key, seconds, max_messages, progress_every=500):
                  str(pr.get("NavigationalStatus")), normalize_time(meta.get("time_utc")),
                  SOURCE_ID, mmsi_code.get(mmsi), category))
             stats["stored"] += 1
+            if category == "unknown":
+                pending_unknown[mmsi].append(cur.lastrowid)   # may be reclassified later this run
             if stats["stored"] % progress_every == 0:
                 conn.commit()
                 print(f"  ...stored {stats['stored']} (dropped {stats['dropped_type']} by type, "

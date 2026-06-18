@@ -30,14 +30,14 @@ def test_categories():
 
 
 def test_keep_drop_decision():
-    # Kept: tankers, cargo, unknown/other, hsc, military, law enforcement, SAR.
-    for cat in ("tanker", "cargo", "unknown", "other", "hsc",
+    # Kept: tankers, cargo, unknown/other, military, law enforcement, SAR.
+    for cat in ("tanker", "cargo", "unknown", "other",
                 "military", "law_enforcement", "sar"):
         assert should_store(cat), f"{cat} should be KEPT"
-    # Dropped: passenger, sailing, pleasure, fishing, tug, service.
-    for cat in ("passenger", "sailing", "pleasure", "fishing", "tug", "service"):
+    # Dropped: passenger, sailing, pleasure, fishing, tug, service, hsc.
+    for cat in ("passenger", "sailing", "pleasure", "fishing", "tug", "service", "hsc"):
         assert not should_store(cat), f"{cat} should be DROPPED"
-    print("PASS: keep/drop matches the agreed selection (incl. SAR/military kept)")
+    print("PASS: keep/drop matches the agreed selection (SAR/military kept, HSC dropped)")
 
 
 if __name__ == "__main__":
