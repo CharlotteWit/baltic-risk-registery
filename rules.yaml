@@ -69,7 +69,7 @@ rules:
     data_source: "positions table (loitering analysis)"
 
   - id: R10
-    description: "Listed by EU / OFAC / UK / KSE / GUR"
+    description: "Listed by EU / OFAC / UK / GUR"
     weight: 3
     data_source: "list_membership table"
 
@@ -81,16 +81,17 @@ bands:
   - {name: high,     min: 8, max: 9999}
 
 # Flags commonly associated with elevated flag-of-convenience risk (used by R5).
-# This list is editable; document why a flag is here when you add one.
+# ISO 3166-1 alpha-2 codes (lower-case) — this is what our flag facts/AIS use.
+# Editable; the country name is given as a comment. Document why you add one.
 foc_flags:
-  - Panama
-  - Liberia
-  - Marshall Islands
-  - Cook Islands
-  - Comoros
-  - Gabon
-  - Palau
-  - "Sao Tome and Principe"
-  - Cameroon
-  - Barbados
-  - Djibouti
+  - pa   # Panama
+  - lr   # Liberia
+  - mh   # Marshall Islands
+  - ck   # Cook Islands
+  - km   # Comoros
+  - ga   # Gabon
+  - pw   # Palau
+  - st   # Sao Tome and Principe
+  - cm   # Cameroon
+  - bb   # Barbados
+  - dj   # Djibouti

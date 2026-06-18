@@ -163,6 +163,35 @@ Honest framing, baked in:
 py src/inference/eastbound_transit.py
 ```
 
+## M5 — The transparent risk engine
+
+`src/inference/risk_engine.py` reads the weights/bands from `rules.yaml`, evaluates
+every rule per vessel against real stored evidence, writes each fired rule to
+`risk_flags` (with the source behind it), and writes a total score + band to
+`risk_scores`. Fully recomputable; change a weight in `rules.yaml`, re-run, and the
+scores change (verified).
+
+Crucially it is explicit about **three** states per rule — `triggered`,
+`not_triggered`, and `not_evaluated` — so a data gap is never a silent zero:
+
+- **Evaluable now:** R1/R1b (age), R3 (flag change), R4 (name change), R5 (FoC
+  flag), R6 (PSC detention list), R10 (sanctions listing).
+- **Data gaps (not_evaluated):** R2 (no insurer data), R7 (AIS gaps — intermittent
+  capture), R9 (loitering/STS), R8 (Russian-terminal calls — no AIS coverage).
+  R8d (eastbound) is evaluated but rarely fires for the same coverage reason.
+
+```
+py src/inference/risk_engine.py    # score everyone + show the top vessel's breakdown
+```
+
+_Caution when reading bands: a score of 0 can mean "evaluated and low" OR "we have
+almost no data" — absence of evidence is not low risk. ~2,750 of the scored
+vessels are AIS-discovered with little registry data, so their low scores are
+really "insufficient data". (Calibration discussion ongoing.)_
+
+_M5 part 2 (size-distribution analysis to decide a minimum-size rule) is still to
+do — it needs AIS `Dimension` capture, not yet implemented._
+
 ## Why these vessels are included (AIS ship-type selection)
 
 This project tracks vessels that could pose an **environmental threat to the
