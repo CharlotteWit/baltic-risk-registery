@@ -42,6 +42,10 @@ M-series milestones are complete.)
       an incident, or an at-sea transfer) as a contextual signal — without
       asserting intent.
 
+## Decided against
+- **Minimum-size rule** (2026-06-19): no size threshold. All ships are kept in the
+  register regardless of size — small vessels can still cause environmental harm.
+
 ## Notes
-- AIS (M3), port calls (M4), risk engine (M5), map (M6), export (M7) are the
-  normal milestone roadmap — not parked, just upcoming.
+- M0–M7 milestones are complete. The items above are genuine deferrals; everything
+  else is built.

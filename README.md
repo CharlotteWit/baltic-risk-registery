@@ -26,7 +26,7 @@ design and the non-negotiable provenance rules.
 - `src/identity.py` — change detection for IMO/flag/name. Treats case/spacing-only
   differences as the same value, so only **genuine** renames/reflaggings count as
   changes; raw values are always preserved verbatim.
-- `rules.yaml` — the transparent risk rules (R1–R10) and score bands.
+- `rules.yaml` — the transparent risk rules (R1–R12) and score bands.
 - `config/geofences.yaml` — region bounding boxes and Russian oil terminals.
 - `tests/` — `test_provenance.py` (sourceless data is refused) and
   `test_identity.py` (casing variants are not false changes; real renames are caught).
@@ -199,8 +199,9 @@ almost no data" — absence of evidence is not low risk. ~2,569 scored vessels a
 AIS-discovered with no age and no listing, so their score-0 is really
 "insufficient data" (a dedicated band for this is still open for decision)._
 
-_M5 part 2 (size-distribution analysis to decide a minimum-size rule) is still to
-do — it needs AIS `Dimension` capture, not yet implemented._
+_Minimum-size rule: **decided against** (2026-06-19) — all ships are kept in the
+register regardless of size; small vessels can still pose environmental risk, so
+no size threshold is applied._
 
 ## M6 — Map & evidence sheets
 

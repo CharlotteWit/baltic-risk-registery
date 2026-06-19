@@ -70,10 +70,13 @@ rules:
     data_source: "identity_history name history (>= 3 distinct names)"
 
 # Score bands. Every score must still be expandable into the list of rules that
-# fired and the evidence behind each. (Realistic max with current rules ~12.)
+# fired and the evidence behind each.
+# Calibration (2026-06-19): age alone (R1=5) is NOT "increased risk" — a 20+ year
+# hull only becomes elevated when combined with another factor (e.g. + tanker = 7,
+# or + any context flag = 6). So 'elevated' starts at 6, not 4.
 bands:
-  - {name: low,      min: 0, max: 3}
-  - {name: elevated, min: 4, max: 7}
+  - {name: low,      min: 0, max: 5}
+  - {name: elevated, min: 6, max: 7}
   - {name: high,     min: 8, max: 9999}
 
 # Flags commonly associated with elevated flag-of-convenience risk (used by R5).
