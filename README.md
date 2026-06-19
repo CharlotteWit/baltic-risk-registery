@@ -177,9 +177,13 @@ It is explicit about three states per rule — `triggered`, `not_triggered`,
 **Active rules and weights (calibrated 2026-06-18):**
 - **R1 age > 20 → 5**, **R1b age 15–20 → 3** — age weighs highest (an old hull is
   the core spill risk on its own, sanctioned or not).
+- **R11 carries oil/crude/gas/chemicals (tanker) → 2** — a hazardous-cargo vessel
+  is a bigger spill risk than a dry-cargo ship.
 - **R6 PSC detention/ban → 2** — these ships were actually inspected and detained.
 - **R3 flag change, R4 name change, R5 FoC flag, R10 sanctions listing → 1 each**
   — context all pointing to the same shadow-fleet scenario.
+- **R12 three or more distinct names on record → 1** — identity churn (2 names can
+  be a genuine rename; 3+ is a shadow-fleet signal).
 - **R8d eastbound transit → 1** (low confidence; rarely fires — coverage).
 
 **Removed** (cannot evaluate with our data, so deleted rather than silently zeroed):

@@ -15,7 +15,7 @@ descr = {r['rule_id']: None for r in []}
 import yaml
 rules = yaml.safe_load((Path(__file__).resolve().parents[1] / 'rules.yaml').read_text(encoding='utf-8'))['rules']
 d = {x['id']: x['description'] for x in rules}
-for rid in ("R1", "R1b", "R3", "R4", "R5", "R6", "R8d", "R10"):
+for rid in ("R1", "R1b", "R3", "R4", "R5", "R6", "R8d", "R10", "R11", "R12"):
     n = conn.execute("SELECT COUNT(*) c FROM risk_flags WHERE rule_id=? AND triggered=1", (rid,)).fetchone()["c"]
     print(f"{rid:5s} {weights.get(rid,0):>2d}  {n:>6d}   {d.get(rid,'')[:50]}")
 

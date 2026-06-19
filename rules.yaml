@@ -59,6 +59,16 @@ rules:
     weight: 1
     data_source: "list_membership table"
 
+  - id: R11
+    description: "Carries oil / crude / gas / chemicals (tanker — high spill risk)"
+    weight: 2
+    data_source: "vessel_type fact and/or AIS ship-type category 'tanker'"
+
+  - id: R12
+    description: "Three or more distinct names on record (identity churn; 2 can be a genuine rename)"
+    weight: 1
+    data_source: "identity_history name history (>= 3 distinct names)"
+
 # Score bands. Every score must still be expandable into the list of rules that
 # fired and the evidence behind each. (Realistic max with current rules ~12.)
 bands:

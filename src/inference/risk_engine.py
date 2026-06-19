@@ -50,6 +50,8 @@ DETENTION_LISTS = {"tokyo_mou_detention", "ext_tokyo_mou_psc", "black_sea_mou_de
 SANCTION_LISTS = {"EU", "OFAC", "UK", "GUR"}
 
 TRIG, NOT, NA = "triggered", "not_triggered", "not_evaluated"
+# vessel_type substrings that mean "carries oil/crude/gas/chemicals" (R11)
+TANKER_KEYWORDS = ("tanker", "oil", "crude", "gas", "chemical", "lng", "lpg", "petroleum")
 ONE_YEAR_AGO = (datetime.now(timezone.utc) - timedelta(days=365)).isoformat(timespec="seconds")
 
 
@@ -142,6 +144,34 @@ def score_vessel(conn, imo, foc):
         out["R10"] = (TRIG, {"lists": [r["list_name"] for r in srows], "source_url": srows[0]["source_url"]})
     else:
         out["R10"] = (NOT if any_list else NA, {"reason": None if any_list else "not in any list"})
+
+    # --- R11 : carries oil / crude / gas / chemicals (tanker) ---
+    vtypes = [r["value"] for r in conn.execute(
+        "SELECT DISTINCT value FROM facts WHERE imo=? AND field='vessel_type' AND value IS NOT NULL",
+        (imo,))]
+    ac = conn.execute("SELECT type_category FROM positions WHERE imo=? AND source_id='aisstream' "
+                      "AND type_category IS NOT NULL ORDER BY timestamp DESC LIMIT 1", (imo,)).fetchone()
+    ais_cat = ac["type_category"] if ac else None
+    is_tanker = (any(any(kw in v.lower() for kw in TANKER_KEYWORDS) for v in vtypes)
+                 or ais_cat == "tanker")
+    has_type = bool(vtypes) or (ais_cat and ais_cat != "unknown")
+    if is_tanker:
+        out["R11"] = (TRIG, {"vessel_type": vtypes, "ais_category": ais_cat})
+    elif has_type:
+        out["R11"] = (NOT, {"vessel_type": vtypes, "ais_category": ais_cat})
+    else:
+        out["R11"] = (NA, {"reason": "no vessel type known"})
+
+    # --- R12 : three or more distinct names on record ---
+    nrows = _identity_rows(conn, imo, "name")
+    if not nrows:
+        out["R12"] = (NA, {"reason": "no name history"})
+    else:
+        ngroups = group_identity_history(nrows, "name")
+        if len(ngroups) >= 3:
+            out["R12"] = (TRIG, {"names": [g["variants"][0] for g in ngroups], "count": len(ngroups)})
+        else:
+            out["R12"] = (NOT, {"count": len(ngroups)})
     return out
 
 
@@ -195,7 +225,7 @@ def show(conn, imo):
         print(f"SCORE: {sc['total_score']}  BAND: {sc['band'].upper()}")
     print('='*72)
     descr = {x["id"]: x["description"] for x in yaml.safe_load(RULES_PATH.read_text(encoding='utf-8'))["rules"]}
-    for rule in ("R1", "R1b", "R3", "R4", "R5", "R6", "R8d", "R10"):
+    for rule in ("R1", "R1b", "R3", "R4", "R12", "R5", "R11", "R6", "R8d", "R10"):
         state, ev = res[rule]
         w = weights.get(rule, 0)
         mark = {"triggered": f"FIRED  +{w}", "not_triggered": "  -  ", "not_evaluated": " n/a "}[state]
