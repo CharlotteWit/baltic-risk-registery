@@ -231,6 +231,38 @@ start exports\map.html        # opens in your browser (Windows)
 
 (The generated `exports/map.html` is gitignored — rebuild it from the DB anytime.)
 
+## M7 — Sourced export & one-command refresh
+
+**Export** (`src/report/export.py`) writes `exports/vessels.csv` and
+`exports/vessels.json` where **every field carries its source URL and retrieval
+time**, so a journalist could verify any row from the file alone. The CSV has, for
+each key field, a value column plus `<field>_source` and `<field>_retrieved`
+columns, alongside the risk score, band, list memberships and the rules that fired.
+The JSON additionally holds the full current-fact list and each fired rule's evidence.
+
+```
+py src/report/export.py
+```
+
+**Refresh** (`src/refresh.py`) is the single command that updates everything and
+rebuilds the outputs: OpenSanctions → Wikidata → live AIS (bounded) → age-risk →
+risk engine → map + export.
+
+```
+py src/refresh.py                       # full refresh (AIS listens REFRESH_AIS_SECONDS, default 180)
+REFRESH_AIS_SECONDS=0 py src/refresh.py # refresh data + rescore without a live AIS capture
+```
+
+## Run everything (quick reference)
+
+```
+py -m pip install -r requirements.txt   # one-time: dependencies
+#  put your keys in .env  (OPENSANCTIONS_API_KEY, AISSTREAM_API_KEY)
+py src/refresh.py                        # update all sources, rescore, rebuild outputs
+start exports\map.html                   # open the map
+#  exports\vessels.csv / vessels.json    # the sourced export
+```
+
 This project tracks vessels that could pose an **environmental threat to the
 Baltic and North Sea**. The live AIS feed (M3) therefore keeps:
 
