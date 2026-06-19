@@ -207,9 +207,13 @@ def build(conn):
                                f"score {esc(r['total_score'])} — <i>no increased environmental risk</i>")
         color = BAND_COLOR[key]
         radius = 3 if key == "assist" else 5   # assist vessels are less important -> smaller
+        # grey 'insufficient data' dots are faded so the red/orange/green stand out
+        fill_op = 0.2 if key == "insufficient" else 0.8
+        stroke_op = 0.3 if key == "insufficient" else 1.0
         folium.CircleMarker(
             location=[r["lat"], r["lon"]], radius=radius,
-            color=color, fill=True, fill_color=color, fill_opacity=0.8,
+            color=color, weight=1, opacity=stroke_op,
+            fill=True, fill_color=color, fill_opacity=fill_op,
             popup=popup, tooltip=f"IMO {imo} — {key}",
         ).add_to(groups[key])
         counts[key] += 1
