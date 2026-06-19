@@ -206,8 +206,9 @@ def build(conn):
             popup = mini_popup(f"<b>IMO {esc(imo)}</b><br>{name}<br>Type: {vtype}<br>"
                                f"score {esc(r['total_score'])} — <i>no increased environmental risk</i>")
         color = BAND_COLOR[key]
+        radius = 3 if key == "assist" else 5   # assist vessels are less important -> smaller
         folium.CircleMarker(
-            location=[r["lat"], r["lon"]], radius=5,
+            location=[r["lat"], r["lon"]], radius=radius,
             color=color, fill=True, fill_color=color, fill_opacity=0.8,
             popup=popup, tooltip=f"IMO {imo} — {key}",
         ).add_to(groups[key])
