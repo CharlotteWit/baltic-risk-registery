@@ -108,24 +108,7 @@ def evidence_html(conn, imo, descr, insufficient=False):
                      "MISSING DATA (no build year and not on any list), not a safety "
                      "assessment.</i></div>")
 
-    facts = db.current_profile(conn, imo)
-    parts.append("<div style='margin-top:6px;background:#e8f0fe;padding:3px 5px;"
-                 "font-weight:bold'>FACTS (source-reported)</div>")
-    if facts:
-        parts.append("<table style='border-collapse:collapse;width:100%'>")
-        for f in facts:
-            val = esc(f["value"]) if f["value"] is not None else "(unknown)"
-            src = esc(f["source_id"] or "")
-            url = esc(f["source_url"] or "")
-            ret = esc((f["retrieved_at"] or "")[:10])
-            link = f"<a href='{url}' target='_blank'>{src}</a>" if url else src
-            parts.append(
-                f"<tr><td style='color:#555;padding-right:6px'>{esc(f['field'])}</td>"
-                f"<td><b>{val}</b></td><td style='padding-left:6px'>{link} <i>{ret}</i></td></tr>")
-        parts.append("</table>")
-    else:
-        parts.append("<i>no facts stored</i>")
-
+    # INFERENCES first (right under the pinned header) ...
     flags = conn.execute("SELECT rule_id, weight, evidence FROM risk_flags "
                          "WHERE imo=? AND triggered=1 ORDER BY weight DESC", (imo,)).fetchall()
     parts.append("<div style='margin-top:6px;background:#fde8e8;padding:3px 5px;"
@@ -144,6 +127,25 @@ def evidence_html(conn, imo, descr, insufficient=False):
         parts.append("</table>")
     else:
         parts.append("<i>no risk rules fired</i>")
+
+    # ... then the full FACTS below (scroll down for all the info)
+    facts = db.current_profile(conn, imo)
+    parts.append("<div style='margin-top:6px;background:#e8f0fe;padding:3px 5px;"
+                 "font-weight:bold'>FACTS (source-reported)</div>")
+    if facts:
+        parts.append("<table style='border-collapse:collapse;width:100%'>")
+        for f in facts:
+            val = esc(f["value"]) if f["value"] is not None else "(unknown)"
+            src = esc(f["source_id"] or "")
+            url = esc(f["source_url"] or "")
+            ret = esc((f["retrieved_at"] or "")[:10])
+            link = f"<a href='{url}' target='_blank'>{src}</a>" if url else src
+            parts.append(
+                f"<tr><td style='color:#555;padding-right:6px'>{esc(f['field'])}</td>"
+                f"<td><b>{val}</b></td><td style='padding-left:6px'>{link} <i>{ret}</i></td></tr>")
+        parts.append("</table>")
+    else:
+        parts.append("<i>no facts stored</i>")
 
     parts.append("</div>")
     return "".join(parts)
