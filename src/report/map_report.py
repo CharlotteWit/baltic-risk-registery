@@ -71,6 +71,13 @@ def vessel_name(conn, imo):
     return display_name(cur) if cur else ""
 
 
+def vessel_type(conn, imo, fallback=None):
+    """Latest registry vessel_type fact; else the AIS type category; else 'unknown'."""
+    vt = conn.execute("SELECT value FROM facts WHERE imo=? AND field='vessel_type' "
+                      "AND value IS NOT NULL ORDER BY retrieved_at DESC LIMIT 1", (imo,)).fetchone()
+    return vt["value"] if vt else (fallback or "unknown")
+
+
 def evidence_html(conn, imo, descr, insufficient=False):
     sc = conn.execute("SELECT total_score, band FROM risk_scores WHERE imo=?", (imo,)).fetchone()
     name = esc(vessel_name(conn, imo) or "(name unknown)")
@@ -81,9 +88,7 @@ def evidence_html(conn, imo, descr, insufficient=False):
     else:
         color, label = BAND_COLOR.get(band, "gray"), esc(str(band)).upper()
 
-    vt = conn.execute("SELECT value FROM facts WHERE imo=? AND field='vessel_type' "
-                      "AND value IS NOT NULL ORDER BY retrieved_at DESC LIMIT 1", (imo,)).fetchone()
-    vtype = esc(vt["value"]) if vt else "unknown"
+    vtype = esc(vessel_type(conn, imo))
 
     parts = [
         "<div style='font-family:sans-serif;font-size:12px;max-height:340px;overflow:auto'>",
@@ -189,13 +194,16 @@ def build(conn):
                                "<br><i>response/assist vessel — not scored for environmental risk</i>")
         elif imo not in built and imo not in listed:
             key = "insufficient"
-            popup = mini_popup(f"<b>IMO {esc(imo)}</b> {name}<br><i>limited information available</i>")
+            vtype = esc(vessel_type(conn, imo, r["type_category"]))
+            popup = mini_popup(f"<b>IMO {esc(imo)}</b><br>{name or '(name unknown)'}<br>"
+                               f"Type: {vtype}<br>Score: <i>insufficient information available</i>")
         elif r["band"] in ("high", "elevated"):
             key = r["band"]
             popup = folium.Popup(evidence_html(conn, imo, descr, False), max_width=360)
         else:  # low, assessed
             key = "low"
-            popup = mini_popup(f"<b>IMO {esc(imo)}</b> {name}<br>"
+            vtype = esc(vessel_type(conn, imo, r["type_category"]))
+            popup = mini_popup(f"<b>IMO {esc(imo)}</b><br>{name}<br>Type: {vtype}<br>"
                                f"score {esc(r['total_score'])} — <i>no increased environmental risk</i>")
         color = BAND_COLOR[key]
         folium.CircleMarker(
